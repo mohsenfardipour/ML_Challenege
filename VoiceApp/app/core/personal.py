@@ -28,7 +28,9 @@ from typing import Callable
 from app.core.persian_text import ZWNJ, clean_transcript, normalize_chars
 from app.core.text_align import changed_runs, words_model_missed
 
-HOTWORDS_TOKEN_BUDGET = 80   # well below faster-whisper's limit of 223; long prompts can cause hallucinations
+# Kept short on purpose: in tests a long hint (80 tokens) made the fine-tuned model skip
+# whole sentences. faster-whisper's own limit is 223 tokens.
+HOTWORDS_TOKEN_BUDGET = 40
 
 # Very common Persian words. They are never suggested as vocabulary or as the
 # "wrong" side of a rule, because a rule on them would damage normal sentences.
@@ -150,8 +152,9 @@ def suggest_vocabulary(pairs: list[tuple[str, str | None]], limit: int = 60) -> 
                     missed[w] += 1
     scores = {w: missed[w] * 3 + freq[w] for w in set(freq) | set(missed)}
     ranked = sorted(scores, key=lambda w: (-scores[w], -missed[w], w))
-    # A word seen only once and never missed is not "special": skip it.
-    ranked = [w for w in ranked if missed[w] or freq[w] >= 2]
+    # Words the model got wrong are the useful hints. A word it always got right
+    # is only kept if it is frequent in your messages (3+ times).
+    ranked = [w for w in ranked if missed[w] or (not any(h for _, h in pairs) and freq[w] >= 2) or freq[w] >= 3]
     return ranked[:limit]
 
 

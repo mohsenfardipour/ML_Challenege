@@ -80,8 +80,13 @@ def run(models_dir: Path, audio_dir: Path, report: Path, keys: list[str]) -> int
             sc = score(ref, text)
             r["runs"][name] = {"wer": sc.wer, "cer": sc.cer, "text": text}
             print(f"   {name:28s} WER {sc.wer:6.1%}  CER {sc.cer:6.1%}", flush=True)
-        do("rec1 + vocab + rules (same)", "rec1", full)
-        do("rec2 + vocab + rules (new)", "rec2", full)
+        for name, audio_key in (("rec1 + vocab + rules (same)", "rec1"), ("rec2 + vocab + rules (new)", "rec2")):
+            res = do(name, audio_key, full)
+            sc = score(rec[audio_key][1], res.raw_text)          # hints only, before rules
+            hint_name = name.replace("vocab + rules", "vocab only")
+            r["runs"][hint_name] = {"wer": sc.wer, "cer": sc.cer, "text": res.raw_text,
+                                    "dropped": dropped_sentences(sentences[audio_key], res.raw_text)}
+            print(f"   {hint_name:28s} WER {sc.wer:6.1%}  CER {sc.cer:6.1%}", flush=True)
         results[key] = r
         del t
 
@@ -117,15 +122,19 @@ def render(results: dict, rec: dict) -> str:
         lines.append(f"| {key}-ct2-int8.zip | https://huggingface.co/{m.get('source_repo', '?')} | "
                      f"{m.get('license') or 'see model page'} | {str(m.get('source_revision', ''))[:10]} |")
     lines += ["", "### Personalization (learned from speaker 1, tested on speaker 1 and on speaker 2)", "",
-              "| model | speaker 1: plain → personalized | speaker 2 (new recording): plain → rules only → vocab + rules |",
-              "|---|---|---|"]
+              "| model | test recording | plain | + rules | + vocabulary hints | + both |",
+              "|---|---|---|---|---|---|"]
     for key, r in results.items():
         if "runs" not in r:
             continue
         x = r["runs"]
-        lines.append(f"| {key} | {pct(x['rec1 plain']['wer'])} → {pct(x['rec1 + vocab + rules (same)']['wer'])} | "
-                     f"{pct(x['rec2 plain']['wer'])} → {pct(x['rec2 + rules (new recording)']['wer'])} → "
-                     f"{pct(x['rec2 + vocab + rules (new)']['wer'])} |")
+        for label, plain, rules, hints, both in (
+                ("speaker 1 (same as learned)", "rec1 plain", "rec1 + rules (same sample)",
+                 "rec1 + vocab only (same)", "rec1 + vocab + rules (same)"),
+                ("speaker 2 (new recording)", "rec2 plain", "rec2 + rules (new recording)",
+                 "rec2 + vocab only (new)", "rec2 + vocab + rules (new)")):
+            lines.append(f"| {key} | {label} | {pct(x[plain]['wer'])} | {pct(x[rules]['wer'])} | "
+                         f"{pct(x[hints]['wer'])} | {pct(x[both]['wer'])} |")
     lines += ["", "(WER values; the speaker-1 number is an upper bound because the rules were learned from that "
               "same recording.)", ""]
     return "\n".join(lines)

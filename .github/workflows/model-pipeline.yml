@@ -10,6 +10,10 @@ on:
       - ".github/workflows/model-pipeline.yml"
   workflow_dispatch:
 
+concurrency:
+  group: model-pipeline          # a new run waits for the previous one (both publish the same release)
+  cancel-in-progress: false
+
 env:
   RELEASE_TAG: voiceapp-2.0
   HF_HUB_DISABLE_TELEMETRY: "1"
@@ -38,6 +42,7 @@ jobs:
             VoiceApp/testaudio/rec2.txt
 
   convert:
+    needs: testaudio
     runs-on: ubuntu-latest
     timeout-minutes: 90
     strategy:
@@ -59,10 +64,15 @@ jobs:
         run: sudo rm -rf /usr/share/dotnet /usr/local/lib/android /opt/ghc /opt/hostedtoolcache/CodeQL && df -h /
       - name: Install converter
         run: |
+          sudo apt-get update -q && sudo apt-get install -y -q ffmpeg
           pip install -q torch==2.7.1 --index-url https://download.pytorch.org/whl/cpu
-          pip install -q transformers==4.52.4 ctranslate2==4.6.0 huggingface_hub tokenizers sentencepiece
-      - name: Convert ${{ matrix.repo }}
-        run: python VoiceApp/tools/model_pipeline/convert_model.py ${{ matrix.repo }} ${{ matrix.key }} out
+          pip install -q transformers==4.52.4 ctranslate2==4.6.0 faster-whisper==1.2.1 huggingface_hub tokenizers sentencepiece
+      - uses: actions/download-artifact@v4
+        with:
+          name: testaudio
+          path: VoiceApp/testaudio
+      - name: Convert ${{ matrix.repo }} and compare with the original model
+        run: python VoiceApp/tools/model_pipeline/convert_model.py ${{ matrix.repo }} ${{ matrix.key }} out VoiceApp/testaudio/rec1.ogg
       - uses: actions/upload-artifact@v4
         with:
           name: model-${{ matrix.key }}

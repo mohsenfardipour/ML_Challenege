@@ -5,6 +5,8 @@
 import os
 import sys
 
+from PyInstaller.utils.hooks import collect_data_files, collect_dynamic_libs
+
 ffmpeg_exe = os.path.join("ffmpeg", "ffmpeg.exe")
 if sys.platform.startswith("win") and not os.path.isfile(ffmpeg_exe):
     raise SystemExit("ffmpeg\\ffmpeg.exe is missing - run setup.bat first.")
@@ -13,11 +15,18 @@ datas = []
 if os.path.isfile(ffmpeg_exe):
     datas += [(ffmpeg_exe, "ffmpeg"), (os.path.join("ffmpeg", "LICENSE"), "ffmpeg")]
 
+# Speech-to-text: CTranslate2 native libraries and faster-whisper's voice-activity model.
+# The Whisper models themselves are NOT bundled (they live in D:\\VoiceApp\\models).
+binaries = collect_dynamic_libs("ctranslate2")
+datas += collect_data_files("faster_whisper") + collect_data_files("docx")
+
 a = Analysis(
     ["VoiceApp.py"],
     pathex=["."],
+    binaries=binaries,
     datas=datas,
-    excludes=["tkinter", "unittest", "pydoc", "pytest", "email.mime", "xmlrpc"],
+    excludes=["tkinter", "unittest", "pydoc", "pytest", "torch", "transformers", "tensorflow",
+              "matplotlib", "scipy", "pandas", "IPython", "pkg_resources", "setuptools"],
     noarchive=False,
 )
 

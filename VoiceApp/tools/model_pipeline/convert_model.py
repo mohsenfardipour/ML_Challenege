@@ -1,11 +1,15 @@
 """Download a Whisper model from Hugging Face and convert it for faster-whisper.
 
-    python convert_model.py HF_REPO KEY OUT_DIR
+    python convert_model.py HF_REPO KEY OUT_DIR [TEST_AUDIO]
 
 Produces OUT_DIR/KEY/ (CTranslate2, int8 weights) containing model.bin,
 config.json, vocabulary.json, tokenizer.json, preprocessor_config.json and
 voiceapp_model.json, and OUT_DIR/KEY-ct2-int8.zip with KEY/ as the top folder.
-Runs in CI (needs torch + transformers + ctranslate2); not part of the app.
+
+If the model uses a non-standard token layout (BuzzASR/persian), the tokens are
+renumbered first (remap_vocab.py). With TEST_AUDIO, the converted model's output
+is compared with the original model running in transformers on the same audio.
+Runs in CI (needs torch + transformers + ctranslate2 + faster-whisper); not part of the app.
 """
 
 import json
@@ -17,12 +21,16 @@ from pathlib import Path
 
 from huggingface_hub import HfApi, snapshot_download
 
+sys.path.insert(0, str(Path(__file__).resolve().parent))
+sys.path.insert(0, str(Path(__file__).resolve().parents[2]))
+from remap_vocab import needs_remap, remap  # noqa: E402
+
 SPECIAL = ("<|endoftext|>", "<|startoftranscript|>", "<|fa|>", "<|transcribe|>", "<|translate|>",
            "<|startofprev|>", "<|nospeech|>", "<|notimestamps|>", "<|0.00|>", "<|0.02|>")
 MAX_ZIP_BYTES = 2_000_000_000
 
 
-def main(repo: str, key: str, out_dir: str) -> int:
+def main(repo: str, key: str, out_dir: str, test_audio: str | None = None) -> int:
     out = Path(out_dir)
     work = Path(tempfile.mkdtemp(prefix="src-"))
     info = HfApi().model_info(repo)
@@ -60,6 +68,23 @@ def main(repo: str, key: str, out_dir: str) -> int:
         if ids[needed] is None:
             print(f"ERROR: tokenizer has no {needed}; faster-whisper cannot decode this model.")
             return 2
+    remap_info = None
+    convert_src = src
+    if needs_remap(src / "tokenizer.json"):
+        print("Non-standard token layout -> renumbering tokens to the standard Whisper layout")
+        convert_src = work / "remapped"
+        remap_info = remap(src, convert_src)
+        (convert_src / "tokenizer_config.json").write_text(json.dumps({
+            "tokenizer_class": "WhisperTokenizer", "processor_class": "WhisperProcessor",
+            "bos_token": "<|endoftext|>", "eos_token": "<|endoftext|>", "unk_token": "<|endoftext|>",
+            "pad_token": "<|endoftext|>", "add_prefix_space": False, "errors": "replace",
+            "model_max_length": 448}), encoding="utf-8")
+        tokenizer = Tokenizer.from_file(str(convert_src / "tokenizer.json"))
+        ids = {t: tokenizer.token_to_id(t) for t in SPECIAL}
+        print("new ids:", ids)
+        assert tokenizer.decode(tokenizer.encode(test, add_special_tokens=False).ids) == test
+        gen_path = convert_src / "generation_config.json"
+        gen = json.loads(gen_path.read_text(encoding="utf-8"))
     timestamps_ok = ids["<|0.00|>"] is not None and ids["<|0.00|>"] == ids["<|notimestamps|>"] + 1
     print("timestamp tokens usable:", timestamps_ok)
 
@@ -79,8 +104,8 @@ def main(repo: str, key: str, out_dir: str) -> int:
     target = out / key
     if target.exists():
         shutil.rmtree(target)
-    copy = [f for f in ("tokenizer.json", "preprocessor_config.json") if (src / f).exists()]
-    TransformersConverter(str(src), copy_files=copy, load_as_float16=True,
+    copy = [f for f in ("tokenizer.json", "preprocessor_config.json") if (convert_src / f).exists()]
+    TransformersConverter(str(convert_src), copy_files=copy, load_as_float16=True,
                           low_cpu_mem_usage=True).convert(str(target), quantization="int8")
     meta = {
         "key": key,
@@ -90,9 +115,15 @@ def main(repo: str, key: str, out_dir: str) -> int:
         "quantization": "int8",
         "ctranslate2_version": ctranslate2.__version__,
         "without_timestamps": not timestamps_ok,
+        "token_layout_remapped": remap_info is not None,
     }
-    (target / "voiceapp_model.json").write_text(json.dumps(meta, indent=1), encoding="utf-8")
+    if test_audio:
+        meta["check_vs_transformers"] = verify(src, target, Path(test_audio))
+    (target / "voiceapp_model.json").write_text(json.dumps(meta, indent=1, ensure_ascii=False), encoding="utf-8")
     shutil.rmtree(work, ignore_errors=True)
+    if test_audio and meta["check_vs_transformers"]["cer"] > 0.15:
+        print("ERROR: the converted model does not match the original model's output")
+        return 4
     for f in sorted(target.iterdir()):
         print(f"  {f.name:28s} {f.stat().st_size / 1e6:9.1f} MB")
 
@@ -107,5 +138,42 @@ def main(repo: str, key: str, out_dir: str) -> int:
     return 0
 
 
+def verify(original: Path, converted: Path, audio_file: Path, seconds: float = 25.0) -> dict:
+    """Transcribe the start of a test file with the original model (transformers, float32)
+    and with the converted model (faster-whisper, int8); the texts should match closely."""
+    import gc
+    import subprocess
+
+    import numpy as np
+    import torch
+    from transformers import AutoProcessor, WhisperForConditionalGeneration
+
+    from app.core.text_align import score
+
+    raw = subprocess.run(["ffmpeg", "-loglevel", "error", "-i", str(audio_file), "-t", str(seconds), "-ac", "1",
+                          "-ar", "16000", "-f", "s16le", "-"], capture_output=True, check=True).stdout
+    audio = np.frombuffer(raw, dtype=np.int16).astype(np.float32) / 32768.0
+
+    processor = AutoProcessor.from_pretrained(str(original))
+    model = WhisperForConditionalGeneration.from_pretrained(str(original), torch_dtype=torch.float32)
+    features = processor.feature_extractor(audio, sampling_rate=16000, return_tensors="pt").input_features
+    with torch.no_grad():
+        out = model.generate(features, language="fa", task="transcribe", num_beams=1, max_new_tokens=220)
+    reference = processor.tokenizer.batch_decode(out, skip_special_tokens=True)[0].strip()
+    del model
+    gc.collect()
+
+    from faster_whisper import WhisperModel
+    fw = WhisperModel(str(converted), device="cpu", compute_type="int8")
+    segments, _ = fw.transcribe(audio, language="fa", beam_size=1, vad_filter=False, temperature=0.0,
+                                condition_on_previous_text=False, without_timestamps=True)
+    converted_text = " ".join(s.text.strip() for s in segments)
+    cer = score(reference, converted_text).cer if reference else 1.0
+    print("transformers (original):", reference)
+    print("faster-whisper (converted):", converted_text)
+    print(f"difference (CER): {cer:.1%}")
+    return {"cer": round(cer, 4), "transformers": reference, "faster_whisper": converted_text}
+
+
 if __name__ == "__main__":
-    sys.exit(main(*sys.argv[1:4]))
+    sys.exit(main(*sys.argv[1:5]))

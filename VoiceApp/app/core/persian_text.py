@@ -4,15 +4,15 @@ from __future__ import annotations
 
 import re
 
-ZWNJ = "‌"   # half-space (نیم‌فاصله)
+ZWNJ = "\u200c"   # half-space (نیم‌فاصله)
 
-_ARABIC_TO_PERSIAN = str.maketrans({"ي": "ی", "ى": "ی", "ك": "ک", "ـ": ""})   # last: tatweel
-_DIACRITICS = re.compile(r"[ً-ٰٟ]")
+_ARABIC_TO_PERSIAN = str.maketrans({"\u064a": "\u06cc", "\u0649": "\u06cc", "\u0643": "\u06a9", "\u0640": ""})  # ي ى ك -> ی ی ک, tatweel removed
+_DIACRITICS = re.compile(r"[\u064B-\u065F\u0670]")
 
 # می / نمی + verb  ->  می‌رود ، نمی‌رود
-_MI = re.compile(r"(?<![\w‌])(ن?می) +(?=[؀-ۿ])")
+_MI = re.compile(r"(?<![\w\u200c])(ن?می) +(?=[\u0600-\u06FF])")
 # word + ها / های / هایی / هایم ...  ->  کتاب‌ها
-_HA = re.compile(r"(?<=[؀-ۿ]) +(ها|های|هایی|هایم|هایت|هایش|هایمان|هایتان|هایشان)(?![\w‌])")
+_HA = re.compile(r"(?<=[\u0600-\u06FF]) +(ها|های|هایی|هایم|هایت|هایش|هایمان|هایتان|هایشان)(?![\w\u200c])")
 _SPACES = re.compile(r"[ \t]+")
 
 
