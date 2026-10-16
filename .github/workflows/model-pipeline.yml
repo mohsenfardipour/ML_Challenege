@@ -18,4 +18,4 @@ jobs:
         with:
           python-version: "3.11"
       - run: pip install -q huggingface_hub tokenizers
-      - run: python VoiceApp/tools/model_pipeline/inspect_models.py vhdm/whisper-large-fa-v1 BuzzASR/persian openai/whisper-large-v3-turbo
+      - run: python VoiceApp/tools/model_pipeline/inspect_models.py vhdm/whisper-large-fa-v1 BuzzASR/persian

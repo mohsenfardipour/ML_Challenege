@@ -6,7 +6,7 @@ import sys
 from huggingface_hub import HfApi, hf_hub_download
 
 SMALL = ("config.json", "generation_config.json", "tokenizer_config.json", "preprocessor_config.json",
-         "special_tokens_map.json", "added_tokens.json", "README.md")
+         "README.md")
 SPECIAL = ("<|startoftranscript|>", "<|fa|>", "<|transcribe|>", "<|notimestamps|>", "<|endoftext|>", "<|0.00|>",
            "<|nocaptions|>", "<|nospeech|>", "<|startofprev|>")
 
@@ -23,14 +23,15 @@ def inspect(repo: str) -> None:
             text = open(path, encoding="utf-8").read()
             if name.endswith(".json"):
                 data = json.loads(text)
-                for k in ("added_tokens_decoder",):
+                for k in ("added_tokens_decoder", "suppress_tokens", "begin_suppress_tokens",
+                          "alignment_heads", "additional_special_tokens", "id2label", "label2id"):
                     if k in data:
                         data[k] = f"<{len(data[k])} entries>"
                 if "lang_to_id" in data:
                     data["lang_to_id"] = f"<{len(data['lang_to_id'])} langs, fa={data['lang_to_id'].get('<|fa|>')}>"
-                text = json.dumps(data, ensure_ascii=False, indent=1)[:3000]
+                text = json.dumps(data, ensure_ascii=False)[:1800]
             else:
-                text = text[:2500]
+                text = text.split("---", 2)[-1][:2500]
             print(f"--- {name}\n{text}")
     if "tokenizer.json" in names:
         from tokenizers import Tokenizer
