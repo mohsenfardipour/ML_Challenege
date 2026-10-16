@@ -1,0 +1,55 @@
+# Builds and tests the VoiceApp Windows exe on a clean Windows machine.
+# The finished app is attached to each run as "VoiceApp-win64" (Actions tab -> run -> Artifacts).
+name: VoiceApp Windows build
+
+on:
+  push:
+    paths:
+      - "VoiceApp/**"
+      - ".github/workflows/voiceapp-windows.yml"
+  workflow_dispatch:
+
+jobs:
+  build:
+    runs-on: windows-latest
+    defaults:
+      run:
+        working-directory: VoiceApp
+        shell: cmd
+    env:
+      VOICEAPP_NOPAUSE: "1"
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+
+      - name: Setup (venv, packages, FFmpeg)
+        run: setup.bat
+
+      - name: Build (tests, PyInstaller, exe self-test)
+        run: build.bat
+
+      - name: GUI launch test of the exe
+        run: |
+          set "VOICEAPP_DATA_DIR=%RUNNER_TEMP%\smoke"
+          start "" /wait dist\VoiceApp\VoiceApp.exe --smoke-test
+          if errorlevel 1 (
+            type "%RUNNER_TEMP%\smoke\logs\voiceapp.log"
+            exit /b 1
+          )
+          type "%RUNNER_TEMP%\smoke\logs\voiceapp.log"
+
+      - name: Report size
+        shell: pwsh
+        run: |
+          $size = (Get-ChildItem dist\VoiceApp -Recurse | Measure-Object Length -Sum).Sum / 1MB
+          "App folder size: {0:N0} MB" -f $size
+          "Zip size: {0:N0} MB" -f ((Get-Item dist\VoiceApp-win64.zip).Length / 1MB)
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: VoiceApp-win64
+          path: VoiceApp/dist/VoiceApp
+          retention-days: 30

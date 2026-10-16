@@ -1,0 +1,4 @@
+# Runtime + build dependencies (installed by setup.bat into .venv)
+PySide6-Essentials==6.8.1
+pyinstaller==6.11.1
+pytest==8.3.4
