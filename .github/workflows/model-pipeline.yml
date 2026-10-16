@@ -1,0 +1,21 @@
+# Downloads the Persian Whisper models from Hugging Face, converts them for
+# faster-whisper (CTranslate2 int8), tests them and publishes them as a GitHub Release.
+name: VoiceApp model pipeline
+
+on:
+  push:
+    paths:
+      - "VoiceApp/tools/model_pipeline/**"
+      - ".github/workflows/model-pipeline.yml"
+  workflow_dispatch:
+
+jobs:
+  inspect:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+      - run: pip install -q huggingface_hub tokenizers
+      - run: python VoiceApp/tools/model_pipeline/inspect_models.py vhdm/whisper-large-fa-v1 BuzzASR/persian openai/whisper-large-v3-turbo
