@@ -84,7 +84,7 @@ to all three formats and checks them). If everything passes you get:
 * `dist\VoiceApp-win64.zip` — the same folder zipped, to copy to another PC.
   Unzip it anywhere and run `VoiceApp.exe`. **No Python needed.**
 
-Build takes 1–3 minutes. The app folder is about 130 MB (FFmpeg alone is 87 MB).
+Build takes 1–3 minutes. The app folder is about 150 MB (FFmpeg alone is 87 MB); the zip is about 57 MB.
 
 Each push to GitHub also builds the exe on a clean Windows machine
 (`.github/workflows/voiceapp-windows.yml`). Download it from the run’s
