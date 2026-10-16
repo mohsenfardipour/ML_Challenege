@@ -1,0 +1,47 @@
+# Speech-to-text benchmark on a GitHub Windows machine (4 vCPU, 16 GB).
+# Only indicative: the real numbers come from running benchmark.bat on your own PC.
+name: VoiceApp STT benchmark
+
+on:
+  push:
+    paths:
+      - "VoiceApp/tools/benchmark_stt.py"
+      - "VoiceApp/tools/get_persian_test_audio.py"
+      - ".github/workflows/stt-benchmark.yml"
+  workflow_dispatch:
+
+jobs:
+  benchmark:
+    runs-on: windows-latest
+    timeout-minutes: 150
+    defaults:
+      run:
+        working-directory: VoiceApp
+    env:
+      VOICEAPP_NOPAUSE: "1"
+      PYTHONUTF8: "1"
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+      - name: Setup
+        shell: cmd
+        run: setup.bat
+      - name: Get Persian test speech (FLEURS)
+        shell: cmd
+        run: .venv\Scripts\python.exe tools\get_persian_test_audio.py testaudio --count 8
+      - name: Benchmark
+        shell: cmd
+        run: |
+          .venv\Scripts\pip.exe freeze
+          set "HF_HOME=%CD%\models\.hf-cache"
+          .venv\Scripts\python.exe tools\benchmark_stt.py testaudio\fleurs_fa_sample.ogg --reference testaudio\reference.txt --models large-v3-turbo large-v3 --threads 4 6 8
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: stt-benchmark-report
+          path: |
+            VoiceApp/benchmark_report.md
+            VoiceApp/testaudio/fleurs_fa_sample.ogg
+            VoiceApp/testaudio/reference.txt

@@ -1,4 +1,4 @@
-"""Where things live on disk: the app folder, the data folder, and FFmpeg.
+"""Where things live on disk: the app folder, data folder, models folder and FFmpeg.
 
 All settings and logs are stored in a "data" folder next to the app
 (e.g. D:\\VoiceApp\\data), so nothing is written to drive C: unless the app
@@ -58,6 +58,12 @@ def data_dir() -> Path:
         else:
             _data_dir = candidates[-1]
     return _data_dir
+
+
+def models_dir() -> Path:
+    """Folder for speech-to-text models (e.g. D:\\VoiceApp\\models). Never inside the exe."""
+    override = os.environ.get("VOICEAPP_MODELS_DIR")
+    return Path(override) if override else app_dir() / "models"
 
 
 def _ffmpeg_search_dirs() -> list[Path]:

@@ -7,3 +7,5 @@ ffmpeg/
 samples/
 __pycache__/
 *.pyc
+models/
+benchmark_report.md
