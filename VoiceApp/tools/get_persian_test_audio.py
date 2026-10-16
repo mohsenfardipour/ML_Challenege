@@ -4,7 +4,7 @@
 
 Uses the Persian (fa_ir) test set of Google's FLEURS dataset (CC-BY 4.0,
 read speech). Several sentences are joined into one ~1 minute file and saved
-as OGG/Opus like a Telegram voice message, plus reference.txt with the
+as OGG/Opus like a Telegram voice message, plus <name>.txt with the
 correct text. Used by CI for the speech-to-text benchmark; your own voice
 messages in samples\\ are the better test.
 """
@@ -28,19 +28,27 @@ def main() -> int:
     parser = argparse.ArgumentParser()
     parser.add_argument("out_dir")
     parser.add_argument("--count", type=int, default=8)
+    parser.add_argument("--recording", type=int, default=1,
+                        help="1 = first speaker of each sentence, 2 = second speaker (same sentences)")
+    parser.add_argument("--name", default="fleurs_fa_sample")
     args = parser.parse_args()
     out = Path(args.out_dir)
-    clips = out / "clips"
+    clips = out / f"clips_{args.name}"
     clips.mkdir(parents=True, exist_ok=True)
 
     with urllib.request.urlopen(f"{BASE}/test.tsv", timeout=60) as resp:
         rows = list(csv.reader(io.TextIOWrapper(resp, encoding="utf-8"), delimiter="\t",
                                quoting=csv.QUOTE_NONE))
     # columns: id, file name, raw transcription, normalized transcription, ...
-    seen_ids, wanted = set(), {}
+    # Several speakers read the same sentence. Take the first `count` sentences that
+    # have at least 2 recordings, so --recording 1 and 2 contain the same text.
+    by_id: dict[str, list[list[str]]] = {}
     for row in rows:
-        if row[0] not in seen_ids:          # several speakers may read the same sentence
-            seen_ids.add(row[0])
+        by_id.setdefault(row[0], []).append(row)
+    wanted = {}
+    for recordings in by_id.values():
+        if len(recordings) >= 2:
+            row = recordings[args.recording - 1]
             wanted[row[1]] = row[2]
         if len(wanted) >= args.count:
             break
@@ -61,12 +69,12 @@ def main() -> int:
     list_file = clips / "list.txt"
     list_file.write_text("".join(f"file '{n}'\n" for n in order), encoding="utf-8")
     ffmpeg = find_tool("ffmpeg")
-    target = out / "fleurs_fa_sample.ogg"
+    target = out / f"{args.name}.ogg"
     subprocess.run([ffmpeg, "-hide_banner", "-loglevel", "error", "-y", "-f", "concat", "-safe", "0",
                     "-i", str(list_file), "-ac", "1", "-c:a", "libopus", "-b:a", "32k", str(target)],
                    check=True)
-    (out / "reference.txt").write_text("\n".join(found[n] for n in order) + "\n", encoding="utf-8")
-    print(f"Wrote {target} ({len(order)} sentences) and reference.txt")
+    (out / f"{args.name}.txt").write_text("\n".join(found[n] for n in order) + "\n", encoding="utf-8")
+    print(f"Wrote {target} ({len(order)} sentences) and {args.name}.txt")
     return 0
 
 

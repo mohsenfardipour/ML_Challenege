@@ -123,3 +123,17 @@ def run_with_progress(cmd: list[str], duration: float | None,
         raise RuntimeError(stderr or f"ffmpeg exited with code {proc.returncode}")
     if on_progress:
         on_progress(1.0)
+
+
+def decode_to_pcm16k(path: str, timeout: float = 600):
+    """Decode any audio file to 16 kHz mono float32 samples (what Whisper needs)."""
+    import numpy as np
+
+    cmd = [ffmpeg_path(), "-hide_banner", "-nostdin", "-loglevel", "error", "-i", path,
+           "-map", "0:a:0", "-vn", "-ac", "1", "-ar", "16000", "-f", "s16le", "pipe:1"]
+    proc = subprocess.run(cmd, capture_output=True, stdin=subprocess.DEVNULL,
+                          creationflags=_NO_WINDOW, timeout=timeout)
+    if proc.returncode != 0:
+        raise RuntimeError(proc.stderr.decode("utf-8", errors="replace").strip()
+                           or f"ffmpeg exited with code {proc.returncode}")
+    return np.frombuffer(proc.stdout, dtype=np.int16).astype(np.float32) / 32768.0

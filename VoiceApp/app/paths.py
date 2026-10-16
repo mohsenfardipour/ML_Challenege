@@ -60,10 +60,33 @@ def data_dir() -> Path:
     return _data_dir
 
 
+def _user_folder(name: str) -> Path:
+    """D:\\VoiceApp\\<name> for models/ and personal/.
+
+    From source the project folder is used. The packaged exe usually lives one
+    level deeper (D:\\VoiceApp\\VoiceApp\\VoiceApp.exe or D:\\VoiceApp\\dist\\VoiceApp\\...),
+    so an existing folder up to two levels above the exe is reused; otherwise
+    it is created next to the exe's folder.
+    """
+    base = app_dir()
+    if not is_frozen():
+        return base / name
+    for folder in (base, base.parent, base.parent.parent):
+        if (folder / name).is_dir():
+            return folder / name
+    return base.parent / name
+
+
 def models_dir() -> Path:
     """Folder for speech-to-text models (e.g. D:\\VoiceApp\\models). Never inside the exe."""
     override = os.environ.get("VOICEAPP_MODELS_DIR")
-    return Path(override) if override else app_dir() / "models"
+    return Path(override) if override else _user_folder("models")
+
+
+def personal_dir() -> Path:
+    """Folder for personal samples, vocabulary and correction rules (D:\\VoiceApp\\personal)."""
+    override = os.environ.get("VOICEAPP_PERSONAL_DIR")
+    return Path(override) if override else _user_folder("personal")
 
 
 def _ffmpeg_search_dirs() -> list[Path]:

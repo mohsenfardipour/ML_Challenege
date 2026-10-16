@@ -1,5 +1,6 @@
 # Downloads the Persian Whisper models from Hugging Face, converts them for
-# faster-whisper (CTranslate2 int8), tests them and publishes them as a GitHub Release.
+# faster-whisper (CTranslate2 int8), tests them on Persian speech and publishes
+# them as zip files on the GitHub Release "voiceapp-2.0" (the app downloads from there).
 name: VoiceApp model pipeline
 
 on:
@@ -9,13 +10,137 @@ on:
       - ".github/workflows/model-pipeline.yml"
   workflow_dispatch:
 
+env:
+  RELEASE_TAG: voiceapp-2.0
+  HF_HUB_DISABLE_TELEMETRY: "1"
+
 jobs:
-  inspect:
+  testaudio:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-python@v5
         with:
           python-version: "3.11"
-      - run: pip install -q huggingface_hub tokenizers
-      - run: python VoiceApp/tools/model_pipeline/inspect_models.py vhdm/whisper-large-fa-v1 BuzzASR/persian
+      - run: sudo apt-get update -q && sudo apt-get install -y -q ffmpeg
+      - name: Persian FLEURS sentences, two speakers
+        working-directory: VoiceApp
+        run: |
+          python tools/get_persian_test_audio.py testaudio --count 8 --recording 1 --name rec1
+          python tools/get_persian_test_audio.py testaudio --count 8 --recording 2 --name rec2
+      - uses: actions/upload-artifact@v4
+        with:
+          name: testaudio
+          path: |
+            VoiceApp/testaudio/rec1.ogg
+            VoiceApp/testaudio/rec1.txt
+            VoiceApp/testaudio/rec2.ogg
+            VoiceApp/testaudio/rec2.txt
+
+  convert:
+    runs-on: ubuntu-latest
+    timeout-minutes: 90
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - repo: vhdm/whisper-large-fa-v1
+            key: whisper-large-fa-v1
+          - repo: BuzzASR/persian
+            key: buzzasr-persian
+          - repo: openai/whisper-large-v3-turbo
+            key: large-v3-turbo
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+      - name: Free disk space
+        run: sudo rm -rf /usr/share/dotnet /usr/local/lib/android /opt/ghc /opt/hostedtoolcache/CodeQL && df -h /
+      - name: Install converter
+        run: |
+          pip install -q torch==2.7.1 --index-url https://download.pytorch.org/whl/cpu
+          pip install -q transformers==4.52.4 ctranslate2==4.6.0 huggingface_hub tokenizers sentencepiece
+      - name: Convert ${{ matrix.repo }}
+        run: python VoiceApp/tools/model_pipeline/convert_model.py ${{ matrix.repo }} ${{ matrix.key }} out
+      - uses: actions/upload-artifact@v4
+        with:
+          name: model-${{ matrix.key }}
+          path: out/${{ matrix.key }}-ct2-int8.zip
+          compression-level: 0
+          retention-days: 7
+
+  evaluate:
+    needs: [testaudio, convert]
+    if: always() && needs.testaudio.result == 'success'
+    runs-on: ubuntu-latest
+    timeout-minutes: 150
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+      - run: sudo apt-get update -q && sudo apt-get install -y -q ffmpeg
+      - run: pip install -q faster-whisper==1.2.1 ctranslate2==4.6.0 psutil
+      - uses: actions/download-artifact@v4
+        with:
+          pattern: model-*
+          path: zips
+          merge-multiple: true
+      - uses: actions/download-artifact@v4
+        with:
+          name: testaudio
+          path: VoiceApp/testaudio
+      - name: Unzip models
+        run: |
+          mkdir -p models
+          for z in zips/*.zip; do unzip -q "$z" -d models; done
+          ls -la models zips
+      - name: Evaluate
+        working-directory: VoiceApp
+        run: python tools/model_pipeline/evaluate.py ../models testaudio ../report.md whisper-large-fa-v1 buzzasr-persian large-v3-turbo
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: evaluation-report
+          path: |
+            report.md
+            report.json
+
+  release:
+    needs: evaluate
+    if: always() && needs.evaluate.result == 'success'
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/download-artifact@v4
+        with:
+          pattern: model-*
+          path: zips
+          merge-multiple: true
+      - uses: actions/download-artifact@v4
+        with:
+          name: evaluation-report
+          path: .
+      - name: Write release notes
+        run: |
+          {
+            echo "Offline Persian speech-to-text models for VoiceApp (faster-whisper / CTranslate2, int8, CPU)."
+            echo
+            echo "**Install:** in VoiceApp open the *Transcribe* tab and click *Download model*, or download a zip below"
+            echo "and unzip it into \`D:\\VoiceApp\\models\\\` (you get e.g. \`D:\\VoiceApp\\models\\whisper-large-fa-v1\\model.bin\`)."
+            echo
+            cat report.md
+          } > notes.md
+      - name: Create or update release
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          if gh release view "$RELEASE_TAG" >/dev/null 2>&1; then
+            gh release edit "$RELEASE_TAG" --notes-file notes.md
+          else
+            gh release create "$RELEASE_TAG" --target "${{ github.sha }}" --title "VoiceApp 2.0 – Persian speech-to-text" --notes-file notes.md
+          fi
+          gh release upload "$RELEASE_TAG" zips/*.zip --clobber

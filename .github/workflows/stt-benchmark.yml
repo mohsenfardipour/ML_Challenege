@@ -3,12 +3,7 @@
 name: VoiceApp STT benchmark
 
 on:
-  push:
-    paths:
-      - "VoiceApp/tools/benchmark_stt.py"
-      - "VoiceApp/tools/get_persian_test_audio.py"
-      - ".github/workflows/stt-benchmark.yml"
-  workflow_dispatch:
+  workflow_dispatch:   # run manually from the Actions tab
 
 jobs:
   benchmark:
@@ -36,7 +31,7 @@ jobs:
         run: |
           .venv\Scripts\pip.exe freeze
           set "HF_HOME=%CD%\models\.hf-cache"
-          .venv\Scripts\python.exe tools\benchmark_stt.py testaudio\fleurs_fa_sample.ogg --reference testaudio\reference.txt --models large-v3-turbo large-v3 --threads 4 6 8
+          .venv\Scripts\python.exe tools\benchmark_stt.py testaudio\fleurs_fa_sample.ogg --reference testaudio\fleurs_fa_sample.txt --models large-v3-turbo large-v3 --threads 4 6 8
       - uses: actions/upload-artifact@v4
         if: always()
         with:
@@ -44,4 +39,4 @@ jobs:
           path: |
             VoiceApp/benchmark_report.md
             VoiceApp/testaudio/fleurs_fa_sample.ogg
-            VoiceApp/testaudio/reference.txt
+            VoiceApp/testaudio/fleurs_fa_sample.txt
