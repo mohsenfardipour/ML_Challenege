@@ -6,10 +6,10 @@ with speed, RAM use and the Persian transcripts.
 
     python tools/benchmark_stt.py                      (first 2 files in the samples folder)
     python tools/benchmark_stt.py D:\\VoiceApp\\samples\\voice.ogg
-    python tools/benchmark_stt.py FILE [FILE ...] --models large-v3-turbo large-v3 --threads 4 6 8
+    python tools/benchmark_stt.py FILE [FILE ...] --models whisper-large-fa-v1 buzzasr-persian --threads 4 6 8
     python tools/benchmark_stt.py FILE --reference reference.txt     (also computes WER/CER)
 
-Models are downloaded on first use into the models folder (D:\\VoiceApp\\models).
+Models are downloaded on first use (from this project's GitHub release) into D:\\VoiceApp\\models.
 Each run happens in a fresh Python process so RAM figures don't add up and every
 run starts from the same state. Close other programs while it runs.
 """
@@ -30,7 +30,7 @@ from pathlib import Path
 ROOT = Path(__file__).resolve().parent.parent
 sys.path.insert(0, str(ROOT))
 
-from app.core.stt_models import STT_MODELS, default_model_path, get_model, is_valid_model_dir  # noqa: E402
+from app.core.stt_models import DEFAULT_MODEL_KEY, STT_MODELS, get_model, resolve_model_dir  # noqa: E402
 from app.paths import models_dir  # noqa: E402
 
 # Keep Hugging Face's own cache next to the models, never on drive C:.
@@ -117,16 +117,13 @@ def wer_cer(reference: str, hypothesis: str) -> tuple[float, float]:
 
 # ---------------------------------------------------------------- parent
 def ensure_model(key: str) -> Path:
-    folder = default_model_path(key)
-    if is_valid_model_dir(folder):
+    folder = resolve_model_dir(key)
+    if folder:
         return folder
-    from faster_whisper.utils import download_model
+    from app.core.model_download import download_model
     model = get_model(key)
-    print(f"Downloading {key} (~{model.size_gb} GB) to {folder} ...", flush=True)
-    download_model(model.hf_repo, output_dir=str(folder))
-    if not is_valid_model_dir(folder):
-        raise SystemExit(f"Download of {key} looks incomplete: {folder}")
-    return folder
+    print(f"Downloading {key} (~{model.size_gb} GB) from the GitHub release ...", flush=True)
+    return download_model(model)
 
 
 def expand_audio_args(items: list[str], max_files: int) -> list[str]:
@@ -167,7 +164,7 @@ def cpu_description() -> str:
 def main() -> int:
     parser = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
     parser.add_argument("audio", nargs="*")
-    parser.add_argument("--models", nargs="+", default=["large-v3-turbo"],
+    parser.add_argument("--models", nargs="+", default=[DEFAULT_MODEL_KEY],
                         choices=[m.key for m in STT_MODELS])
     parser.add_argument("--threads", nargs="+", type=int, default=[4, 6, 8])
     parser.add_argument("--reference", help="text file with the correct transcript (for WER/CER)")

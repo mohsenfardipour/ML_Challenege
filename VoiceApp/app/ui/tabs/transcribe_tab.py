@@ -353,7 +353,11 @@ class TranscribeTab(QWidget):
     def _update_estimate(self):
         if self.is_busy():
             return
-        pending = self._pending_rows() or list(range(len(self.rows)))
+        if self.rows and not self._pending_rows():
+            self.time_label.setText(f"All {len(self.rows)} file(s) are transcribed. Click a file to see its text; "
+                                    "Transcribe again runs them all once more.")
+            return
+        pending = self._pending_rows()
         audio = sum(self.rows[i].duration for i in pending)
         if not audio:
             self.time_label.setText("Add voice messages (drag and drop works too).")

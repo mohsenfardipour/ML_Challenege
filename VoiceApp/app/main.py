@@ -4,6 +4,8 @@
     python -m app.main --selftest IN OUT     convert every file in IN to all formats,
                                              check the results, write OUT/selftest_report.txt
     python -m app.main --smoke-test          open the window, close it after 2 s (for build checks)
+    python -m app.main --stt-selftest MODEL_DIR AUDIO OUT [REFERENCE.txt]
+                                             transcribe AUDIO with a real model, write OUT/stt_selftest_report.txt
 
 The same options work with the packaged VoiceApp.exe.
 """
@@ -57,10 +59,15 @@ def main(argv: list[str] | None = None) -> int:
     parser = argparse.ArgumentParser(prog=APP_NAME)
     parser.add_argument("--selftest", nargs=2, metavar=("INPUT_DIR", "OUTPUT_DIR"))
     parser.add_argument("--smoke-test", action="store_true")
+    parser.add_argument("--stt-selftest", nargs="+", metavar="ARG")
     args = parser.parse_args(argv)
 
     setup_logging()
     try:
+        if args.stt_selftest:
+            from app.selftest import run_stt_selftest
+            a = args.stt_selftest
+            return run_stt_selftest(Path(a[0]), Path(a[1]), Path(a[2]), Path(a[3]) if len(a) > 3 else None)
         if args.selftest:
             from app.selftest import run_selftest
             return run_selftest(Path(args.selftest[0]), Path(args.selftest[1]))

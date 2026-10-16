@@ -150,16 +150,34 @@ def verify(original: Path, converted: Path, audio_file: Path, seconds: float = 2
 
     from app.core.text_align import score
 
+    import json
+
     raw = subprocess.run(["ffmpeg", "-loglevel", "error", "-i", str(audio_file), "-t", str(seconds), "-ac", "1",
                           "-ar", "16000", "-f", "s16le", "-"], capture_output=True, check=True).stdout
     audio = np.frombuffer(raw, dtype=np.int16).astype(np.float32) / 32768.0
 
     processor = AutoProcessor.from_pretrained(str(original))
-    model = WhisperForConditionalGeneration.from_pretrained(str(original), torch_dtype=torch.float32)
+    model = WhisperForConditionalGeneration.from_pretrained(str(original), torch_dtype=torch.float32).eval()
+    gen = json.loads((original / "generation_config.json").read_text(encoding="utf-8"))
+    prompt = [gen["decoder_start_token_id"], gen["lang_to_id"]["<|fa|>"], gen["task_to_id"]["transcribe"],
+              gen["no_timestamps_token_id"]]
+    eot = gen["eos_token_id"]
     features = processor.feature_extractor(audio, sampling_rate=16000, return_tensors="pt").input_features
+    # Plain greedy decoding (no transformers generate(): it rejects some fine-tuned configs).
     with torch.no_grad():
-        out = model.generate(features, language="fa", task="transcribe", num_beams=1, max_new_tokens=220)
-    reference = processor.tokenizer.batch_decode(out, skip_special_tokens=True)[0].strip()
+        encoder_out = model.model.encoder(features)
+        ids = torch.tensor([prompt])
+        past, out = None, []
+        for _ in range(220):
+            o = model(encoder_outputs=encoder_out, decoder_input_ids=ids if past is None else ids[:, -1:],
+                      past_key_values=past, use_cache=True)
+            past = o.past_key_values
+            nxt = int(o.logits[0, -1].argmax())
+            if nxt == eot:
+                break
+            out.append(nxt)
+            ids = torch.cat([ids, torch.tensor([[nxt]])], dim=1)
+    reference = processor.tokenizer.decode(out, skip_special_tokens=True).strip()
     del model
     gc.collect()
 

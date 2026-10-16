@@ -69,14 +69,60 @@ def _map(value, m):
     return value
 
 
+def canonical_ids(gen: dict) -> dict[str, int]:
+    """Special-token ids the model authors configured for generation (authoritative)."""
+    ids = {}
+    for token, key in (("<|endoftext|>", "eos_token_id"), ("<|startoftranscript|>", "decoder_start_token_id"),
+                       ("<|notimestamps|>", "no_timestamps_token_id"), ("<|startofprev|>", "prev_sot_token_id")):
+        if isinstance(gen.get(key), int):
+            ids[token] = gen[key]
+    for task, i in (gen.get("task_to_id") or {}).items():
+        ids[f"<|{task}|>"] = i
+    for lang, i in (gen.get("lang_to_id") or {}).items():
+        ids[lang] = i
+    return ids
+
+
+def resolve_duplicates(tok: dict, canonical: dict[str, int]) -> list[tuple[str, int]]:
+    """A special token may appear twice (in the BPE vocab and as an added token) with
+    different ids. Keep the id from generation_config; rename the other one."""
+    renamed = []
+    vocab = tok["model"]["vocab"]
+    for token, i in list(vocab.items()):
+        if token in canonical and i != canonical[token]:
+            del vocab[token]
+            vocab[f"<|dup{i}|>"] = i
+            renamed.append((token, i))
+    for t in tok.get("added_tokens", []):
+        if t["content"] in canonical and t["id"] != canonical[t["content"]]:
+            renamed.append((t["content"], t["id"]))
+            t["content"] = f"<|dup{t['id']}|>"
+    # The canonical token must exist somewhere; add it as an added token if it vanished.
+    present = set(vocab) | {t["content"] for t in tok.get("added_tokens", [])}
+    for token, i in canonical.items():
+        if token not in present:
+            tok.setdefault("added_tokens", []).append({"id": i, "content": token, "single_word": False,
+                                                       "lstrip": False, "rstrip": False, "normalized": False,
+                                                       "special": True})
+    return renamed
+
+
 def remap(src: Path, dst: Path) -> dict:
     import torch
     from transformers import WhisperForConditionalGeneration
 
     tok = json.loads((src / "tokenizer.json").read_text(encoding="utf-8"))
     config = json.loads((src / "config.json").read_text(encoding="utf-8"))
+    gen_raw = json.loads((src / "generation_config.json").read_text(encoding="utf-8"))
+    canonical = canonical_ids(gen_raw)
+    print("ids from generation_config:", {k: v for k, v in canonical.items() if not re.match(r"^<\|[a-z]{2,3}\|>$", k)
+                                          or k == "<|fa|>"})
+    renamed = resolve_duplicates(tok, canonical)
+    print("duplicate special tokens renamed:", renamed)
     vocab_size = config["vocab_size"]
     perm, m, unused_new = build_permutation(tok, vocab_size)
+    dup_new = [m[i] for t, i in list(tok["model"]["vocab"].items()) + [(a["content"], a["id"]) for a in tok["added_tokens"]]
+               if t.startswith("<|dup")]
 
     model = WhisperForConditionalGeneration.from_pretrained(str(src), torch_dtype=torch.float16)
     index = torch.tensor(perm, dtype=torch.long)
@@ -108,7 +154,7 @@ def remap(src: Path, dst: Path) -> dict:
         if getattr(gen, key, None):
             setattr(gen, key, {k: m[v] for k, v in getattr(gen, key).items()})
     # Never generate the unused padding rows.
-    gen.suppress_tokens = sorted(set(gen.suppress_tokens or []) | set(unused_new))
+    gen.suppress_tokens = sorted(set(gen.suppress_tokens or []) | set(unused_new) | set(dup_new))
     model.config.suppress_tokens = gen.suppress_tokens
 
     dst.mkdir(parents=True, exist_ok=True)
@@ -121,6 +167,7 @@ def remap(src: Path, dst: Path) -> dict:
     info = {"eot": ids.get("<|endoftext|>"), "notimestamps": ids.get("<|notimestamps|>"),
             "first_timestamp": ids.get("<|0.00|>"), "fa": ids.get("<|fa|>"),
             "timestamps": sum(1 for t in ids if TIMESTAMP_RE.match(t)), "unused_rows": len(unused_new),
+            "renamed_duplicates": len(renamed),
             "tied_embeddings": tied}
     print("remapped token layout:", info)
     return info

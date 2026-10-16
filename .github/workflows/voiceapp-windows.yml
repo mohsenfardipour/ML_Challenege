@@ -12,6 +12,8 @@ on:
 jobs:
   build:
     runs-on: windows-latest
+    permissions:
+      contents: write          # to attach the app zip to the release
     defaults:
       run:
         working-directory: VoiceApp
@@ -41,12 +43,34 @@ jobs:
           )
           type "%RUNNER_TEMP%\smoke\logs\voiceapp.log"
 
+      - name: Speech-to-text test of the exe (real Persian model and speech)
+        run: |
+          curl -sSL -o model.zip https://github.com/mohsenfardipour/ML_Challenege/releases/download/voiceapp-2.0/whisper-large-fa-v1-ct2-int8.zip
+          tar -xf model.zip -C %RUNNER_TEMP%
+          .venv\Scripts\python.exe tools\get_persian_test_audio.py %RUNNER_TEMP%\fa --count 4 --name rec1
+          set "VOICEAPP_DATA_DIR=%RUNNER_TEMP%\sttdata"
+          start "" /wait dist\VoiceApp\VoiceApp.exe --stt-selftest %RUNNER_TEMP%\whisper-large-fa-v1 %RUNNER_TEMP%\fa\rec1.ogg %RUNNER_TEMP%\sttout %RUNNER_TEMP%\fa\rec1.txt
+          set RC=%ERRORLEVEL%
+          type "%RUNNER_TEMP%\sttout\stt_selftest_report.txt"
+          if not "%RC%"=="0" (
+            type "%RUNNER_TEMP%\sttdata\logs\voiceapp.log"
+            exit /b 1
+          )
+
       - name: Report size
         shell: pwsh
         run: |
           $size = (Get-ChildItem dist\VoiceApp -Recurse | Measure-Object Length -Sum).Sum / 1MB
           "App folder size: {0:N0} MB" -f $size
           "Zip size: {0:N0} MB" -f ((Get-Item dist\VoiceApp-win64.zip).Length / 1MB)
+
+      - name: Attach the app to the GitHub release
+        if: github.ref == 'refs/heads/claude/nice-einstein-pkijf8'
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          copy dist\VoiceApp-win64.zip dist\VoiceApp-2.0-win64.zip
+          gh release upload voiceapp-2.0 dist\VoiceApp-2.0-win64.zip --clobber --repo ${{ github.repository }}
 
       - uses: actions/upload-artifact@v4
         with:

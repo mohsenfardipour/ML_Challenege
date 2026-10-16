@@ -116,6 +116,9 @@ def changed_runs(reference: str, hypothesis: str, max_words: int = 3) -> list[tu
         right = [op.ref for op in run if op.ref]
         if wrong and right and len(wrong) <= max_words and len(right) <= max_words:
             pairs.append((" ".join(wrong), " ".join(right)))
+        else:
+            # Too long for one phrase rule: keep the single-word substitutions inside it.
+            pairs += [(op.hyp, op.ref) for op in run if op.kind == "sub"]
     return pairs
 
 
