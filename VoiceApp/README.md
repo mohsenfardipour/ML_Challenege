@@ -60,6 +60,9 @@ D:\VoiceApp\
 2. Unzip it into `D:\VoiceApp` → you get `D:\VoiceApp\VoiceApp\VoiceApp.exe`.
 3. Run `VoiceApp.exe`. Then install a model (section 4).
 
+The zip is about 150 MB; unpacked the app folder is about 370 MB (FFmpeg, Qt, CTranslate2,
+ONNX Runtime). Models are separate downloads.
+
 ### B. From source
 
 1. Install **Python 3.11 (64-bit)**: <https://www.python.org/downloads/release/python-3119/>

@@ -11,7 +11,7 @@
 
 ۱. این صفحه را باز کنید:
    https://github.com/mohsenfardipour/ML_Challenege/releases/tag/voiceapp-2.0
-۲. فایل **`VoiceApp-2.0-win64.zip`** را دانلود کنید (حدود ۲۰۰ مگابایت).
+۲. فایل **`VoiceApp-2.0-win64.zip`** را دانلود کنید (حدود ۱۵۰ مگابایت).
 ۳. روی فایل راست‌کلیک کنید ← **Extract All…** ← مقصد را **`D:\VoiceApp`** بگذارید.
    حالا این فایل را دارید: `D:\VoiceApp\VoiceApp\VoiceApp.exe`
 
