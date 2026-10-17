@@ -64,13 +64,19 @@ def main(argv: list[str] | None = None) -> int:
 
     setup_logging()
     try:
-        if args.stt_selftest:
-            from app.selftest import run_stt_selftest
-            a = args.stt_selftest
-            return run_stt_selftest(Path(a[0]), Path(a[1]), Path(a[2]), Path(a[3]) if len(a) > 3 else None)
-        if args.selftest:
-            from app.selftest import run_selftest
-            return run_selftest(Path(args.selftest[0]), Path(args.selftest[1]))
+        if args.stt_selftest or args.selftest:
+            # Command-line modes: report errors in the log and the exit code. Raising would make
+            # the packaged exe (no console) show an error dialog that waits forever for a click.
+            try:
+                if args.stt_selftest:
+                    from app.selftest import run_stt_selftest
+                    a = args.stt_selftest
+                    return run_stt_selftest(Path(a[0]), Path(a[1]), Path(a[2]), Path(a[3]) if len(a) > 3 else None)
+                from app.selftest import run_selftest
+                return run_selftest(Path(args.selftest[0]), Path(args.selftest[1]))
+            except Exception:
+                log.critical("Self-test crashed:\n%s", traceback.format_exc())
+                return 2
         return run_gui(smoke_test=args.smoke_test)
     except Exception:
         log.critical("Fatal error:\n%s", traceback.format_exc())

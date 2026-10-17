@@ -5,7 +5,7 @@
 import os
 import sys
 
-from PyInstaller.utils.hooks import collect_data_files, collect_dynamic_libs
+from PyInstaller.utils.hooks import collect_data_files, collect_dynamic_libs, collect_submodules
 
 ffmpeg_exe = os.path.join("ffmpeg", "ffmpeg.exe")
 if sys.platform.startswith("win") and not os.path.isfile(ffmpeg_exe):
@@ -25,6 +25,8 @@ a = Analysis(
     pathex=["."],
     binaries=binaries,
     datas=datas,
+    # numpy loads some of its own modules from C code, which PyInstaller cannot see.
+    hiddenimports=collect_submodules("numpy._core"),
     excludes=["tkinter", "unittest", "pydoc", "pytest", "torch", "transformers", "tensorflow",
               "matplotlib", "scipy", "pandas", "IPython", "pkg_resources", "setuptools"],
     noarchive=False,
