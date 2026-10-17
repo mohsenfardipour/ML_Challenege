@@ -91,11 +91,11 @@ Cancel, and **Open output folder**.
 | Model in the app | Zip on the release | Size | Based on | Expected time on an i3-1215U* |
 |---|---|---|---|---|
 | **Persian – fast (recommended)** | `whisper-large-fa-v1-ct2-int8.zip` | 0.7 GB | [vhdm/whisper-large-fa-v1](https://huggingface.co/vhdm/whisper-large-fa-v1) (large-v3-turbo fine-tuned on Persian, MIT) | ≈ 0.6 × audio length |
-| Persian – high accuracy, slower | `buzzasr-persian-ct2-int8.zip` | 1.3 GB | [BuzzASR/persian](https://huggingface.co/BuzzASR/persian) (large-v3 fine-tuned, MIT) | ≈ 1.6 × audio length |
+| Persian – alternative (slower) | `buzzasr-persian-ct2-int8.zip` | 1.3 GB | [BuzzASR/persian](https://huggingface.co/BuzzASR/persian) (large-v3 fine-tuned, MIT) | ≈ 1.6 × audio length |
 | Base large-v3-turbo (fallback) | `large-v3-turbo-ct2-int8.zip` | 0.7 GB | [openai/whisper-large-v3-turbo](https://huggingface.co/openai/whisper-large-v3-turbo) | ≈ 0.6 × audio length |
 
 \* Estimates for a low-power laptop CPU with 4 threads, on the charger. So a 1-minute voice
-message takes about 35–45 s with the fast model. RAM use: about 1.5 GB (fast) / 2.5 GB (high accuracy).
+message takes about 35–45 s with the fast model. RAM use: about 1.5 GB (fast) / 2.5 GB (alternative).
 The base model is only used automatically if a Persian model fails to load.
 
 The models were converted from Hugging Face to CTranslate2 int8 by
@@ -148,8 +148,9 @@ Real fine-tuning is not possible on a laptop CPU, so VoiceApp uses three lightwe
    *Save as personal sample*. Stored in `D:\VoiceApp\personal\samples\`. List, edit, delete.
 2. **Vocabulary** – names and special words, one per line, most important first. *Suggest from
    my samples* ranks words the model got wrong first. They are given to the model as
-   **hotwords** before every 30-second part, limited to ~40 tokens. Can be switched off
-   (*Give these words to the model as hints*), because hints occasionally make a model skip a sentence.
+   **hotwords** before every 30-second part, limited to ~40 tokens. **Off by default**
+   (*Give these words to the model as hints*): in our tests hints made the Persian model skip or garble
+   sentences (section 7). The list is still used to rank suggestions; turn hints on only if *Test* shows a gain.
 3. **Correction rules** – *Analyze samples* transcribes your samples, aligns the result with your
    correct text and suggests word-level rules such as `اناثر → عناصر`. You tick the ones to use.
    Approved rules are applied after every transcription, **whole words only** (never inside another
@@ -163,7 +164,45 @@ Real fine-tuning is not possible on a laptop CPU, so VoiceApp uses three lightwe
 
 ## 7. Test results
 
-<!--RESULTS-->
+Persian FLEURS test set (8 read sentences, 145 s, converted to OGG/Opus like a voice message),
+GitHub runner CPU, int8, 4 threads. WER = wrong words, CER = wrong letters (lower is better).
+"Speaker 2" reads the same sentences: it shows how much personalization learned from speaker 1
+helps on a *new* recording.
+
+| Model | WER speaker 1 | WER speaker 2 | CER speaker 1 | Dropped sentences | Speed (× audio length) |
+|---|---|---|---|---|---|
+| **Persian – fast (whisper-large-fa-v1)** | **14.5 %** | **23.9 %** | **5.2 %** | **0 / 8** | **0.33** |
+| Persian – alternative (BuzzASR, large-v3) | 44.0 % | 32.1 % | 34.1 % | 2 / 8 | 0.91 |
+| Base large-v3-turbo (not fine-tuned) | 29.1 % | 56.8 % | 14.1 % | 1 / 8 | 0.26 |
+
+* The fast Persian model is the most accurate **and** among the fastest → it is the default.
+* BuzzASR was requested as the "high accuracy" option. After fixing its tokenizer it reproduces the
+  original model (1.4 % CER difference vs. transformers), but on this test it was *less* accurate and
+  ~2.7× slower, so the app labels it "alternative". Try it on your own messages with *Personalize → Test*.
+* Conversion check against the original models (transformers, float32): fast model 3.7 % CER difference,
+  BuzzASR 1.4 % – normal int8 rounding differences.
+* Speed on the GitHub CPU (4 threads): 0.33× for the fast model. The packaged Windows exe
+  transcribed 60 s of Persian speech in 45 s (0.75×, incl. long pauses) on a 4-thread Windows runner.
+  Expect roughly 0.6× audio length on an i3-1215U on the charger.
+
+**Personalization** (WER; learned from speaker 1's recording and its correct text):
+
+| Model | Test recording | Plain | + correction rules | + vocabulary hints | + both |
+|---|---|---|---|---|---|
+| Persian fast | speaker 1 (same recording) | 14.5 % | **6.4 %** | 48.3 % | 43.6 % |
+| Persian fast | speaker 2 (new recording) | 23.9 % | **23.5 %** | 25.2 % | 24.4 % |
+| BuzzASR | speaker 1 | 44.0 % | 38.9 % | 34.6 % | 32.1 % |
+| BuzzASR | speaker 2 | 32.1 % | 32.1 % | 38.0 % | 37.6 % |
+| Base turbo | speaker 1 | 29.1 % | 17.9 % | 36.3 % | 30.3 % |
+| Base turbo | speaker 2 | 56.8 % | 55.1 % | 19.7 % | 18.4 % |
+
+* **Correction rules** never made things worse. They remove the model's repeated mistakes
+  (14.5 → 6.4 % on the same recording) but only help on new messages when the same words come back
+  (23.9 → 23.5 % here, where the sentences share few rare words). With your own messages, which repeat
+  names and terms, expect a gain between these two numbers.
+* **Vocabulary hints** were unstable: they made the fast model skip/garble sentences, so they are
+  **off by default** (Personalize → Vocabulary → checkbox). The speaker-1 numbers are optimistic because
+  the rules were learned from that same recording.
 
 ## 8. Command-line self-tests
 
@@ -186,6 +225,7 @@ file with a real model, exports TXT/DOCX/SRT and (with a correct text) reports W
 | Transcription is slow | Charger + Best performance mode, 4 threads, close other programs, use the fast model. |
 | A sentence is missing in the text | Turn vocabulary hints off (Personalize → Vocabulary), or try the other model. |
 | Strange repeated words | Usually music/noise. Cut the noisy part or try the other model. |
+| The packaged exe shows an error at start | Keep the whole `VoiceApp` folder (with `_internal`) together; re-unzip it. |
 | `Python 3.11 was not found` (source) | Install Python 3.11 as in 2B and run `setup.bat` again. |
 | *Error: The file is damaged…* | The audio file is incomplete or not audio. |
 | Windows SmartScreen | The exe is not code-signed: **More info → Run anyway**. |
@@ -198,10 +238,11 @@ file with a real model, exports TXT/DOCX/SRT and (with a correct text) reports W
   without a GPU; no PyTorch in the app (keeps it ~400 MB smaller).
 * **Models outside the exe**, downloaded from this project's GitHub Release (Hugging Face is often
   blocked); resumable download; manual install always possible.
-* **BuzzASR/persian** uses a re-ordered tokenizer (end-of-text = id 0). faster-whisper assumes the
-  original Whisper layout, so the pipeline **renumbers the tokens** (embedding/output rows, tokenizer,
-  config) to the standard layout – the model computes exactly the same – and checks the converted
-  model against the original model running in `transformers`.
+* **BuzzASR/persian** ships an inconsistent tokenizer: leftover entries at ids 0–1608 carry special
+  names (`<|endoftext|>` = 0), while the model was trained with the standard Whisper layout shifted by
+  1608 (`<|endoftext|>` = 51865, `<|fa|>` = 51908), as `added_tokens.json` and `generation_config.json`
+  say. A diagnostic run proved which layout the model really uses; the pipeline rebuilds `tokenizer.json`
+  accordingly (weights unchanged) and checks the converted model against the original in `transformers`.
 * **Persian fast model as default**: in our tests it had the lowest error rate *and* is ~2.5× faster
   than the large-v3 based model on CPU.
 * **Hotwords instead of initial_prompt**: with `condition_on_previous_text=False`, faster-whisper only
@@ -220,10 +261,11 @@ file with a real model, exports TXT/DOCX/SRT and (with a correct text) reports W
 * Personalization is not training: it cannot teach the model new pronunciations; the measured gain
   is small unless your messages share names/terms with your samples.
 * Vocabulary hints can occasionally cause a skipped sentence (see section 7); switch them off if you notice it.
-* Cancel waits for the current part of the audio (up to ~20 s with the high-accuracy model).
+* Cancel waits for the current part of the audio (up to ~20 s with the alternative model).
 * SRT timestamps come from the model's segments (sentence level, not word level). Edits in the text
   box are used for TXT/DOCX; SRT always uses the original segments.
-* The high-accuracy model needs ~2.5 GB RAM and is ~1.6× slower than real time on an i3.
+* The alternative (BuzzASR) model needs ~2.5 GB RAM, is ~1.6× slower than real time on an i3 and was
+  less accurate than the default model in our test.
 * English interface (Persian text displays correctly). The exe is not code-signed.
 * Converter limitations from Phase 1: first audio track only; WEBM without stored duration shows
   no per-file progress.

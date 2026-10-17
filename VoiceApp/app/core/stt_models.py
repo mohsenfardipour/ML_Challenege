@@ -44,7 +44,9 @@ class SttModel:
 STT_MODELS = (
     SttModel("whisper-large-fa-v1", "Persian – fast (recommended)",
              "vhdm/whisper-large-fa-v1", 0.85, 0.6),
-    SttModel("buzzasr-persian", "Persian – high accuracy, slower",
+    # Requested as the "high accuracy" option, but in our FLEURS test it was less accurate
+    # than the fast model (WER 44% / 32% vs 14.5% / 24%) and ~2.7x slower, so it is labelled honestly.
+    SttModel("buzzasr-persian", "Persian – alternative (large-v3 based, slower)",
              "BuzzASR/persian", 1.6, 1.6),
     SttModel("large-v3-turbo", "Base large-v3-turbo (fallback, not Persian-tuned)",
              "openai/whisper-large-v3-turbo", 0.85, 0.6, fallback_only=True),
