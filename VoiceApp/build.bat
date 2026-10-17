@@ -2,6 +2,7 @@
 rem ==================================================================
 rem  Build the standalone app:  dist\VoiceApp\VoiceApp.exe
 rem  1) runs the tests  2) builds with PyInstaller  3) self-tests the exe
+rem  Speech-to-text models are NOT included (they are downloaded in the app).
 rem ==================================================================
 setlocal
 cd /d "%~dp0"
@@ -45,6 +46,8 @@ set "VOICEAPP_DATA_DIR="
 
 echo.
 echo === Creating zip for copying to other PCs ===
+copy /y README.md dist\VoiceApp\ >nul
+copy /y START_HERE.md dist\VoiceApp\ >nul
 if exist "dist\VoiceApp-win64.zip" del "dist\VoiceApp-win64.zip"
 tar -a -c -f "dist\VoiceApp-win64.zip" -C dist VoiceApp || goto :fail
 

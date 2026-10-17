@@ -1,195 +1,248 @@
-# VoiceApp — offline audio converter (Phase 1)
+# VoiceApp 2.0 — offline audio converter + Persian speech-to-text
 
-A small Windows desktop app that converts voice messages and other audio files
-to **MP3**, **MP4 (audio only, AAC)** or **M4A**. It works completely offline.
+A small Windows desktop app with three tabs, working **completely offline**:
 
-* Input: OGG/Opus (Telegram, WhatsApp), OPUS, OGA, MP3, WAV, M4A, AAC, FLAC, WEBM
-* Batch conversion, drag-and-drop of files **and folders**
-* Bitrate 64–320 kbps (default 128 kbps)
-* Output next to each source file, or in one folder you choose
-* Originals are **never** changed; existing files are **never** overwritten
-  (`name.mp3` → `name_1.mp3` → `name_2.mp3` …)
-* Per-file status, overall progress bar, Cancel, “Open output folder”
-* Persian file names are shown correctly
-* Remembers your last settings; writes a log file for troubleshooting
+1. **Convert audio** – voice messages and other audio to **MP3**, **MP4 (audio only, AAC)** or **M4A**.
+2. **Transcribe (Persian)** – Persian speech to editable text with local Whisper models
+   (faster-whisper, CPU only). Export TXT, DOCX (right-to-left) and SRT subtitles.
+3. **Personalize** – teach the app your names and words, and fix its repeated mistakes,
+   from your own samples (no model training needed).
+
+The only network access is the optional, one-time model download. No cloud APIs, no telemetry.
+
+> **Quick start in Persian: [START_HERE.md](START_HERE.md)**
 
 ---
 
 ## 1. Folder layout
 
-Copy the `VoiceApp` folder to **`D:\VoiceApp`**. All downloads, caches,
-settings and logs stay inside this folder (nothing large goes to drive C:).
+Put everything under **`D:\VoiceApp`**. Models, personal data, settings, logs and
+build caches all stay there (nothing large goes to drive C:).
 
 ```
 D:\VoiceApp\
-├─ setup.bat            one-time setup (Python packages + FFmpeg)
-├─ run_dev.bat          run the app from source
-├─ build.bat            build the standalone exe (dist\VoiceApp\VoiceApp.exe)
-├─ VoiceApp.py          entry point
-├─ VoiceApp.spec        PyInstaller build recipe
-├─ requirements.txt     pinned Python packages
+├─ VoiceApp\VoiceApp.exe   the app, if you use the ready-made zip from the release
+├─ models\                 speech-to-text models (one folder per model)
+│  └─ whisper-large-fa-v1\ model.bin, config.json, tokenizer.json, vocabulary.json …
+├─ personal\               your samples, vocabulary.txt, rules.json
+│
+│  (the rest is only needed to run/build from source)
+├─ setup.bat  run_dev.bat  build.bat  benchmark.bat
+├─ VoiceApp.py  VoiceApp.spec  requirements.txt
 ├─ app\
-│  ├─ main.py           starts the GUI (also --selftest / --smoke-test)
-│  ├─ paths.py          where the data folder and FFmpeg are
-│  ├─ settings.py       remembers last-used settings (data\settings.json)
-│  ├─ logging_setup.py  log file (data\logs\voiceapp.log)
-│  ├─ selftest.py       command-line self-test used after building
-│  ├─ core\             conversion logic, NO GUI code (easy to test)
-│  │  ├─ formats.py     supported inputs, output formats, bitrates
-│  │  ├─ ffmpeg.py      runs ffmpeg, reads duration, reports progress
-│  │  ├─ converter.py   converts one file safely, friendly error messages
-│  │  └─ naming.py      never-overwrite naming (name_1.mp3 …)
+│  ├─ main.py  paths.py  settings.py  logging_setup.py  selftest.py
+│  ├─ core\                logic without GUI (easy to test)
+│  │  ├─ formats.py  ffmpeg.py  converter.py  naming.py      audio conversion
+│  │  ├─ stt_models.py     model list, release URLs, model folders
+│  │  ├─ model_download.py download (with resume) + unzip from the GitHub release
+│  │  ├─ transcriber.py    faster-whisper wrapper (CPU, int8, Persian)
+│  │  ├─ persian_text.py   ي/ك → ی/ک, half-spaces, scoring normalization
+│  │  ├─ text_align.py     word alignment, WER/CER, dropped sentences
+│  │  ├─ personal.py       samples, vocabulary hints, correction rules
+│  │  └─ exporters.py      TXT / DOCX (RTL) / SRT
 │  └─ ui\
-│     ├─ main_window.py window with one tab per feature
-│     ├─ workers.py     background thread so the window never freezes
-│     └─ tabs\
-│        ├─ __init__.py list of tabs  ← Phase 2 adds its tab here
-│        └─ converter_tab.py
-├─ tests\               automated tests (pytest)
-├─ tools\
-│  ├─ get_ffmpeg.py     downloads FFmpeg 7.1.1 and checks its SHA-256
-│  └─ make_test_samples.py  creates test audio files with Persian names
-├─ ffmpeg\              (created by setup.bat) ffmpeg.exe, ffprobe.exe
-├─ data\                (created at runtime) settings.json, logs\
-├─ samples\             your own test files (not used by the code)
-├─ .venv\  .cache\      (created by setup/build) Python env and caches
-└─ dist\                (created by build.bat) the finished app
+│     ├─ main_window.py    one tab per feature
+│     ├─ workers.py  stt_workers.py   background threads (window never freezes)
+│     ├─ stt_common.py     model status, download dialog
+│     └─ tabs\ converter_tab.py  transcribe_tab.py  personalize_tab.py  (+ __init__.py: tab list)
+├─ tests\                  pytest (fake model for speed, real model in CI)
+└─ tools\
+   ├─ get_ffmpeg.py  make_test_samples.py  get_persian_test_audio.py  benchmark_stt.py
+   └─ model_pipeline\      converts the Hugging Face models (runs on GitHub Actions)
 ```
 
-## 2. Setup (once)
+## 2. Install
 
-1. **Install Python 3.11 (64-bit)** if you don't have it:
-   <https://www.python.org/downloads/release/python-3119/> → “Windows installer (64-bit)”.
-   On the first screen tick **“Add python.exe to PATH”**, then “Install Now”.
-   Check it in a new Command Prompt: `py -3.11 --version` → `Python 3.11.x`.
-2. Double-click **`setup.bat`**. It:
-   * checks Python and shows free disk space on C: and D:
-   * creates `.venv` (a private Python environment for this project)
-   * installs PySide6, PyInstaller and pytest (pip cache kept in `.cache`)
-   * downloads FFmpeg (~90 MB) into `ffmpeg\` and verifies its checksum
+### A. Ready-made app (recommended, no Python needed)
 
-   Needs internet once. Total size after setup: about 700 MB, all on D:.
+1. Download **`VoiceApp-2.0-win64.zip`** from the release page:
+   <https://github.com/mohsenfardipour/ML_Challenege/releases/tag/voiceapp-2.0>
+2. Unzip it into `D:\VoiceApp` → you get `D:\VoiceApp\VoiceApp\VoiceApp.exe`.
+3. Run `VoiceApp.exe`. Then install a model (section 4).
 
-## 3. Run from source
+### B. From source
 
-Double-click **`run_dev.bat`**.
+1. Install **Python 3.11 (64-bit)**: <https://www.python.org/downloads/release/python-3119/>
+   (tick **“Add python.exe to PATH”**). Check: `py -3.11 --version`.
+2. Double-click **`setup.bat`**: creates `.venv`, installs the pinned packages
+   (PySide6, faster-whisper, CTranslate2, python-docx … about 450 MB, pip cache in `.cache`)
+   and downloads FFmpeg (~90 MB, checksum verified).
+3. **`run_dev.bat`** starts the app. **`build.bat`** builds `dist\VoiceApp\VoiceApp.exe`
+   (runs the tests, builds with PyInstaller, self-tests the exe, makes `dist\VoiceApp-win64.zip`).
+   Models are never put into the exe.
 
-## 4. Build the standalone app
+Every push also builds and tests the exe on a clean Windows machine on GitHub
+(`.github/workflows/voiceapp-windows.yml`), including a real Persian transcription
+with the packaged exe, and attaches the zip to the release.
 
-Double-click **`build.bat`**. It runs the tests, builds the app with
-PyInstaller, then runs the built exe in self-test mode (converts test files
-to all three formats and checks them). If everything passes you get:
+## 3. Convert audio (tab 1)
 
-* `dist\VoiceApp\VoiceApp.exe` — the app (keep the whole `VoiceApp` folder together)
-* `dist\VoiceApp-win64.zip` — the same folder zipped, to copy to another PC.
-  Unzip it anywhere and run `VoiceApp.exe`. **No Python needed.**
+Input: OGG/Opus (Telegram, WhatsApp), OPUS, OGA, MP3, WAV, M4A, AAC, FLAC, WEBM.
+Add files/folders (or drag and drop), choose format and bitrate (64–320 kbps, default 128),
+choose where to save, click **Convert**. Originals are never changed and existing files
+are never overwritten (`name.mp3` → `name_1.mp3`). Per-file status, overall progress,
+Cancel, and **Open output folder**.
 
-Build takes 1–3 minutes. The app folder is about 150 MB (FFmpeg alone is 87 MB); the zip is about 57 MB.
+## 4. Speech-to-text models
 
-Each push to GitHub also builds the exe on a clean Windows machine
-(`.github/workflows/voiceapp-windows.yml`). Download it from the run’s
-**Artifacts** section in the repository’s *Actions* tab.
+| Model in the app | Zip on the release | Size | Based on | Expected time on an i3-1215U* |
+|---|---|---|---|---|
+| **Persian – fast (recommended)** | `whisper-large-fa-v1-ct2-int8.zip` | 0.7 GB | [vhdm/whisper-large-fa-v1](https://huggingface.co/vhdm/whisper-large-fa-v1) (large-v3-turbo fine-tuned on Persian, MIT) | ≈ 0.6 × audio length |
+| Persian – high accuracy, slower | `buzzasr-persian-ct2-int8.zip` | 1.3 GB | [BuzzASR/persian](https://huggingface.co/BuzzASR/persian) (large-v3 fine-tuned, MIT) | ≈ 1.6 × audio length |
+| Base large-v3-turbo (fallback) | `large-v3-turbo-ct2-int8.zip` | 0.7 GB | [openai/whisper-large-v3-turbo](https://huggingface.co/openai/whisper-large-v3-turbo) | ≈ 0.6 × audio length |
 
-## 5. Using the app
+\* Estimates for a low-power laptop CPU with 4 threads, on the charger. So a 1-minute voice
+message takes about 35–45 s with the fast model. RAM use: about 1.5 GB (fast) / 2.5 GB (high accuracy).
+The base model is only used automatically if a Persian model fails to load.
 
-1. **Add files…** / **Add folder…**, or drag files/folders onto the list.
-   Folders are searched including sub-folders; unsupported files are skipped.
-2. Choose **Output format** and **Bitrate**.
-   For voice messages 64–96 kbps is plenty; 128 kbps is the safe default.
-3. Choose **Save to**: next to each source file, or one folder.
-4. Click **Convert**. Each row shows its status; hover over an error to read it.
-   **Cancel** stops after cleaning up the file being written.
-5. Click **Open output folder** — Explorer opens with the last converted file selected.
+The models were converted from Hugging Face to CTranslate2 int8 by
+`.github/workflows/model-pipeline.yml` (because Hugging Face is often blocked in Iran),
+checked against the original models, and published as release assets. The release
+notes contain the full comparison (see section 7).
 
-Clicking **Convert** again converts only the files that are not *Done* yet
-(failed or cancelled ones). If everything is done, it converts all files again,
-for example in another format. The new files get new names, nothing is replaced.
+### Automatic download
 
-### Self-test from the command line
+In the **Transcribe** tab choose a model and click **Download model**. A progress bar is shown;
+if the connection drops, click again and it continues where it stopped. Files go to `D:\VoiceApp\models\`.
+
+### Manual install (if the download does not work)
+
+1. Download the zip from <https://github.com/mohsenfardipour/ML_Challenege/releases/tag/voiceapp-2.0>
+   with a browser or download manager (the repository is public, no account needed).
+2. Unzip it into **`D:\VoiceApp\models\`** so that e.g. `D:\VoiceApp\models\whisper-large-fa-v1\model.bin` exists.
+3. In the app click **Select local model folder…** → *Unzipped folder…* → choose
+   `D:\VoiceApp\models\whisper-large-fa-v1` (or choose *Zip file…* and let the app unzip it).
+
+A model folder anywhere else works too; the app remembers the folder you select.
+
+## 5. Transcribe (tab 2)
+
+1. **Add files…** (or drag files/folders onto the list). The estimated time is shown before you start.
+2. Choose the model and **CPU threads** (default **4**: on the i3-1215U the 2 fast cores
+   + hyper-threading do most of the work; more threads add heat, not much speed).
+3. **Transcribe**. Progress, elapsed and remaining time are shown; the estimate is refined
+   from the real speed. **Cancel** stops after the current part (a few seconds).
+   The model is loaded once and reused for all files of the batch.
+4. Click a finished file to see its text in the right-to-left editor. Edit it, then
+   **Copy**, **Save TXT…** (UTF-8), **Save DOCX…** (RTL paragraphs, Tahoma), **Save SRT…**,
+   or **Save all…** (TXT + DOCX, optional SRT, never overwrites).
+5. **Save as personal sample**: after correcting the text, this stores the voice file (a copy)
+   and the corrected text as a sample for the Personalize tab.
+
+Decoding settings (fixed): `language="fa"` (no auto-detect), `task="transcribe"`, VAD filter on,
+`condition_on_previous_text=False` (fewer repeated/skipped sentences on long audio), `beam_size=5`,
+temperature fallback 0.0–1.0, `compute_type="int8"`, CPU only.
+Every transcript is normalized: Arabic ي/ك → Persian ی/ک, half-space after می/نمی and before ها/های.
+
+**Speed tips:** plug in the charger; Windows *Settings → System → Power → Power mode → Best performance*;
+close heavy programs (browsers with many tabs); keep CPU threads at 4.
+
+## 6. Personalize (tab 3) – learning from your samples without training
+
+Real fine-tuning is not possible on a laptop CPU, so VoiceApp uses three lightweight methods:
+
+1. **Samples** – pairs of (voice file + exact correct text). Add them here or with
+   *Save as personal sample*. Stored in `D:\VoiceApp\personal\samples\`. List, edit, delete.
+2. **Vocabulary** – names and special words, one per line, most important first. *Suggest from
+   my samples* ranks words the model got wrong first. They are given to the model as
+   **hotwords** before every 30-second part, limited to ~40 tokens. Can be switched off
+   (*Give these words to the model as hints*), because hints occasionally make a model skip a sentence.
+3. **Correction rules** – *Analyze samples* transcribes your samples, aligns the result with your
+   correct text and suggests word-level rules such as `اناثر → عناصر`. You tick the ones to use.
+   Approved rules are applied after every transcription, **whole words only** (never inside another
+   word). Rules whose "wrong" word is a common word or appears correctly in your own texts are
+   marked ⚠ and not approved by *Approve all safe*.
+4. **Test** – *Test on my samples* runs every installed Persian model on your samples with and
+   without personalization and shows WER/CER (lower is better), plus an honest estimate for new
+   messages (rules learned only from the *other* samples, needs 3+ samples). *Use best model as
+   default* switches the default model.
+5. In the Transcribe tab, **Use my personalization** switches all of this on/off.
+
+## 7. Test results
+
+<!--RESULTS-->
+
+## 8. Command-line self-tests
 
 ```bat
-dist\VoiceApp\VoiceApp.exe --selftest D:\VoiceApp\samples D:\VoiceApp\selftest_out
-type D:\VoiceApp\selftest_out\selftest_report.txt
+VoiceApp.exe --selftest D:\VoiceApp\samples D:\VoiceApp\selftest_out
+VoiceApp.exe --stt-selftest D:\VoiceApp\models\whisper-large-fa-v1 D:\VoiceApp\samples\voice.ogg D:\VoiceApp\stt_out [correct_text.txt]
+benchmark.bat                       (speed test of the models on your PC, writes benchmark_report.md)
 ```
 
-This converts every sample to MP3, MP4 and M4A and compares each result's length
-with the source (`PASS`/`FAIL` per file). Use `run_dev.bat --selftest …` to do
-the same from source.
+The first converts every sample to all formats and checks the lengths; the second transcribes one
+file with a real model, exports TXT/DOCX/SRT and (with a correct text) reports WER/CER.
 
-## 6. Troubleshooting
+## 9. Troubleshooting
 
 | Problem | What to do |
 |---|---|
-| `Python 3.11 was not found` | Install it as in step 2.1, open a **new** window, run `setup.bat` again. |
-| Setup fails while downloading | Check internet/proxy and run `setup.bat` again (it continues where it stopped). |
-| “FFmpeg missing” message | `ffmpeg\ffmpeg.exe` is missing. Run `setup.bat`. In the built app, keep the `_internal` folder next to `VoiceApp.exe`. |
-| A file shows *Error: The file is damaged…* | The file is incomplete or not really audio. Try playing it; re-download it. |
-| *Permission denied* | Output folder is read-only (e.g. `C:\Program Files`) or the file is open in a player. Choose another folder. |
-| *Done (warning)* | Converted, but the length differs from the source by more than 1 s / 2 %. Usually the source file is damaged. |
-| Windows SmartScreen “protected your PC” | The exe isn't code-signed. Click **More info → Run anyway**. |
-| Antivirus deletes the exe | A known false positive with PyInstaller apps. Add an exception for `D:\VoiceApp`. |
-| Anything else | Send `data\logs\voiceapp.log` (shown at the bottom of the window). |
+| “Model needed” / Transcribe is greyed out | Install a model (section 4). |
+| Download fails or is very slow | Click Download again (it resumes), or install manually (section 4). |
+| “Not a model folder” | Select the folder that directly contains `model.bin` and `tokenizer.json`. |
+| Transcription is slow | Charger + Best performance mode, 4 threads, close other programs, use the fast model. |
+| A sentence is missing in the text | Turn vocabulary hints off (Personalize → Vocabulary), or try the other model. |
+| Strange repeated words | Usually music/noise. Cut the noisy part or try the other model. |
+| `Python 3.11 was not found` (source) | Install Python 3.11 as in 2B and run `setup.bat` again. |
+| *Error: The file is damaged…* | The audio file is incomplete or not audio. |
+| Windows SmartScreen | The exe is not code-signed: **More info → Run anyway**. |
+| Antivirus removes the exe | False positive with PyInstaller apps; add an exception for `D:\VoiceApp`. |
+| Anything else | Send `data\logs\voiceapp.log` (path shown at the bottom of the window). |
 
-Run the tests yourself: `.venv\Scripts\python.exe -m pytest tests`
+## 10. Design decisions (short)
 
-## 7. Design decisions (short)
+* **faster-whisper + CTranslate2 int8 on CPU**: the fastest practical way to run Whisper on a laptop
+  without a GPU; no PyTorch in the app (keeps it ~400 MB smaller).
+* **Models outside the exe**, downloaded from this project's GitHub Release (Hugging Face is often
+  blocked); resumable download; manual install always possible.
+* **BuzzASR/persian** uses a re-ordered tokenizer (end-of-text = id 0). faster-whisper assumes the
+  original Whisper layout, so the pipeline **renumbers the tokens** (embedding/output rows, tokenizer,
+  config) to the standard layout – the model computes exactly the same – and checks the converted
+  model against the original model running in `transformers`.
+* **Persian fast model as default**: in our tests it had the lowest error rate *and* is ~2.5× faster
+  than the large-v3 based model on CPU.
+* **Hotwords instead of initial_prompt**: with `condition_on_previous_text=False`, faster-whisper only
+  uses `initial_prompt` for the first 30 seconds, while hotwords are given for every part.
+* **Correction rules need your approval** and match whole words only, because an automatic rule
+  (e.g. مصر → مس) can also damage correct text.
+* Phase 1 decisions still apply: PySide6-Essentials, pinned & checksum-verified FFmpeg, safe
+  never-overwrite writing, onedir build without UPX, settings/logs in `data\` next to the app.
 
-* **PySide6-Essentials** instead of full PySide6: same Qt widgets, about half the download.
-* **Only `ffmpeg.exe` is bundled.** Duration is read from ffmpeg's own output,
-  so `ffprobe.exe` (another 87 MB) is only used for development/testing.
-* **FFmpeg version is pinned** (7.1.1, “essentials” build by Gyan Doshi) and
-  its SHA-256 is checked, so every build contains exactly the same, untampered FFmpeg.
-* **Files are converted one at a time.** A voice message takes well under a second,
-  and running one ffmpeg at a time keeps a low-power laptop responsive.
-* **Safe writing.** ffmpeg writes to a temporary `.voiceapp.part` file; only a
-  complete result is renamed to its final, unused name. Cancelled or failed files leave nothing behind.
-* **onedir build, no UPX.** Starts faster than a one-file exe and causes fewer antivirus false positives.
-* **Settings and logs in `data\` next to the app** (falls back to `%LOCALAPPDATA%\VoiceApp`
-  only if that folder is read-only).
-* **Tabs are a plug-in list** (`app/ui/tabs/__init__.py`). Phase 2 adds a
-  `TranscribeTab` there; the converter code does not need to change.
+## 11. Known limitations
 
-## 8. Known limitations
+* Accuracy depends a lot on audio quality: noisy, very fast, dialect or mixed-language speech
+  produces more errors. Always read the transcript before using it.
+* Persian homophones (e.g. عناصر/اناثر, طلا/تلا) are a typical error type; correction rules help
+  only for words that repeat in your messages.
+* Personalization is not training: it cannot teach the model new pronunciations; the measured gain
+  is small unless your messages share names/terms with your samples.
+* Vocabulary hints can occasionally cause a skipped sentence (see section 7); switch them off if you notice it.
+* Cancel waits for the current part of the audio (up to ~20 s with the high-accuracy model).
+* SRT timestamps come from the model's segments (sentence level, not word level). Edits in the text
+  box are used for TXT/DOCX; SRT always uses the original segments.
+* The high-accuracy model needs ~2.5 GB RAM and is ~1.6× slower than real time on an i3.
+* English interface (Persian text displays correctly). The exe is not code-signed.
+* Converter limitations from Phase 1: first audio track only; WEBM without stored duration shows
+  no per-file progress.
 
-* Converts only the **first audio track** of a file; video is ignored.
-* Browser-recorded WEBM files often have no stored duration; they convert fine,
-  but the progress bar for that file jumps from 0 to 100 %.
-* Mono voice messages stay mono, and the sample rate is kept
-  (for Opus that is 48 kHz). This is fine for all players.
-* Tags (title/artist) are copied when the source has them; cover art is dropped.
-* The exe is not code-signed (see SmartScreen above).
-* English user interface only (Persian file names and text display correctly).
+## 12. Adding another feature
 
-## 9. Adding a feature later (Phase 2)
-
-1. Create `app/ui/tabs/transcribe_tab.py` with `class TranscribeTab(QWidget)`,
-   a `TAB_TITLE`, and `__init__(self, settings, parent=None)`.
-   Optionally add `is_busy()` and `shutdown()` (see `converter_tab.py`).
-2. Put the non-GUI logic in `app/core/` and run long work in a worker like `app/ui/workers.py`.
-3. Add the class to `TABS` in `app/ui/tabs/__init__.py`.
-4. Add new settings fields to `Settings` in `app/settings.py` (old settings files keep working).
-5. Add new packages to `requirements.txt`, and their data files to `VoiceApp.spec` if needed.
+Create a new tab class in `app/ui/tabs/`, put logic in `app/core/`, long work in a worker thread,
+and add the class to `TABS` in `app/ui/tabs/__init__.py`. New settings go into `Settings`
+(`app/settings.py`); old settings files keep working.
 
 ---
 
 ## خلاصه فارسی
 
-**VoiceApp** برنامه‌ای کوچک و کاملاً آفلاین برای ویندوز است که پیام‌های صوتی
-(تلگرام، واتس‌اپ) و فایل‌های صوتی دیگر را به **MP3**، **MP4 (فقط صدا)** یا **M4A** تبدیل می‌کند.
+**VoiceApp 2.0** یک برنامه کاملاً آفلاین برای ویندوز است:
+۱) تبدیل فایل‌های صوتی به MP3/MP4/M4A، ۲) **تبدیل گفتار فارسی به متن** با مدل‌های Whisper فارسی
+روی همین لپ‌تاپ (بدون اینترنت و بدون کارت گرافیک)، و ۳) **شخصی‌سازی**: برنامه از نمونه‌های صوتی
+شما کلمات خاص و اشتباه‌های تکراری را یاد می‌گیرد.
 
-**نصب (یک بار):**
-۱. پوشه `VoiceApp` را در `D:\VoiceApp` کپی کنید.
-۲. پایتون 3.11 نسخه ۶۴ بیتی را از python.org نصب کنید (گزینه *Add python.exe to PATH* را تیک بزنید).
-۳. روی `setup.bat` دوبار کلیک کنید (به اینترنت نیاز دارد؛ همه چیز روی درایو D ذخیره می‌شود).
+راهنمای قدم‌به‌قدم فارسی: **[START_HERE.md](START_HERE.md)**
 
-**اجرا:** `run_dev.bat`
-**ساخت فایل exe:** `build.bat` ← خروجی در `dist\VoiceApp\VoiceApp.exe` و فایل زیپ
-`dist\VoiceApp-win64.zip` که روی هر کامپیوتر ویندوزی بدون پایتون اجرا می‌شود.
-
-**استفاده:** فایل‌ها یا پوشه‌ها را به لیست بکشید، فرمت و بیت‌ریت را انتخاب کنید و روی
-**Convert** کلیک کنید. فایل‌های اصلی هرگز تغییر نمی‌کنند و هیچ فایلی بازنویسی نمی‌شود
-(مثلاً `name_1.mp3` ساخته می‌شود).
-
-**عیب‌یابی:** پیام خطای هر فایل در ستون Status نمایش داده می‌شود. فایل گزارش در
-`data\logs\voiceapp.log` است. اگر ویندوز هشدار SmartScreen داد، روی
-*More info → Run anyway* کلیک کنید.
+- مدل پیشنهادی: «Persian – fast»، حدود ۰٫۷ گیگابایت؛ هر دقیقه صدا حدود ۳۵ تا ۴۵ ثانیه روی i3.
+- دانلود مدل از داخل برنامه (دکمه Download model) یا دستی از صفحه Release و باز کردن در `D:\VoiceApp\models\`.
+- خروجی: TXT، Word (راست‌به‌چپ) و زیرنویس SRT.
+- برای سرعت بیشتر: شارژر وصل باشد و حالت Best performance ویندوز روشن باشد.

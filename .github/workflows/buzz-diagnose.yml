@@ -1,0 +1,24 @@
+# One-off diagnostic: which token layout does BuzzASR/persian really use?
+name: BuzzASR layout diagnosis
+on:
+  push:
+    paths:
+      - "VoiceApp/tools/model_pipeline/diagnose_buzz.py"
+      - ".github/workflows/buzz-diagnose.yml"
+  workflow_dispatch:
+jobs:
+  diagnose:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+      - run: |
+          sudo apt-get update -q && sudo apt-get install -y -q ffmpeg
+          pip install -q torch==2.7.1 --index-url https://download.pytorch.org/whl/cpu
+          pip install -q transformers==4.52.4 huggingface_hub tokenizers
+      - working-directory: VoiceApp
+        run: |
+          python tools/get_persian_test_audio.py ta --count 4 --name rec1
+          python tools/model_pipeline/diagnose_buzz.py ta/rec1.ogg ta/rec1.txt

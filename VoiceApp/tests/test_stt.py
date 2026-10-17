@@ -291,3 +291,11 @@ def test_personalize_tab_flow(qapp, gui_env, samples):
     assert row.pers_wer < row.plain_wer and row.loo_wer is not None
     tab._use_best()
     assert settings.stt_model == "whisper-large-fa-v1"
+
+
+def test_long_mismatch_still_suggests_single_word_rules():
+    ref = "مردم از روزگار باستان عناصر شیمیایی را می‌شناختند"
+    hyp = "مردم از روز رارد آستان ناصر شیمیایی را می‌شناختند"
+    rules = {r.wrong: r for r in suggest_rules([(ref, hyp)])}
+    assert rules["ناصر"].right == "عناصر" and rules["ناصر"].safe
+    assert all(r.wrong != "روز" or not r.safe for r in rules.values())   # common word: never "safe"
