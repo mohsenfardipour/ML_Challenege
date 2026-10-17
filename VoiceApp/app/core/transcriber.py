@@ -84,14 +84,17 @@ class Transcriber:
         t0 = time.perf_counter()
         samples = ffmpeg.decode_to_pcm16k(str(audio_path))
         duration = len(samples) / 16000
+        log.info("Decoded %s: %.1fs of audio", audio_path, duration)
         options = dict(DECODE_OPTIONS)
         if self.options.get("without_timestamps"):
             options["without_timestamps"] = True
         if personalization and personalization.hotwords:
             options["hotwords"] = personalization.hotwords
         segments_iter, _info = self.model.transcribe(samples, **options)
+        log.info("Speech after VAD: %.1fs", getattr(_info, "duration_after_vad", duration) or 0)
         segments: list[Segment] = []
         for seg in segments_iter:          # the actual work happens while iterating
+            log.debug("Segment %.1f-%.1f", seg.start, seg.end)
             if cancel_event is not None and cancel_event.is_set():
                 raise Cancelled()
             text = seg.text.strip()

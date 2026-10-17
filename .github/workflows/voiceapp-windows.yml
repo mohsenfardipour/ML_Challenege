@@ -9,6 +9,10 @@ on:
       - ".github/workflows/voiceapp-windows.yml"
   workflow_dispatch:
 
+concurrency:
+  group: voiceapp-windows-${{ github.ref }}
+  cancel-in-progress: true
+
 jobs:
   build:
     runs-on: windows-latest
@@ -43,19 +47,34 @@ jobs:
           )
           type "%RUNNER_TEMP%\smoke\logs\voiceapp.log"
 
-      - name: Speech-to-text test of the exe (real Persian model and speech)
+      - name: Get a Persian model and Persian test speech
         run: |
           curl -sSL -o model.zip https://github.com/mohsenfardipour/ML_Challenege/releases/download/voiceapp-2.0/whisper-large-fa-v1-ct2-int8.zip
           tar -xf model.zip -C %RUNNER_TEMP%
           .venv\Scripts\python.exe tools\get_persian_test_audio.py %RUNNER_TEMP%\fa --count 4 --name rec1
-          set "VOICEAPP_DATA_DIR=%RUNNER_TEMP%\sttdata"
-          start "" /wait dist\VoiceApp\VoiceApp.exe --stt-selftest %RUNNER_TEMP%\whisper-large-fa-v1 %RUNNER_TEMP%\fa\rec1.ogg %RUNNER_TEMP%\sttout %RUNNER_TEMP%\fa\rec1.txt
+
+      - name: Speech-to-text test from source (Windows, real model)
+        timeout-minutes: 15
+        run: |
+          set "VOICEAPP_DATA_DIR=%RUNNER_TEMP%\srcdata"
+          .venv\Scripts\python.exe VoiceApp.py --stt-selftest %RUNNER_TEMP%\whisper-large-fa-v1 %RUNNER_TEMP%\fa\rec1.ogg %RUNNER_TEMP%\srcout %RUNNER_TEMP%\fa\rec1.txt
           set RC=%ERRORLEVEL%
-          type "%RUNNER_TEMP%\sttout\stt_selftest_report.txt"
-          if not "%RC%"=="0" (
-            type "%RUNNER_TEMP%\sttdata\logs\voiceapp.log"
-            exit /b 1
-          )
+          type "%RUNNER_TEMP%\srcout\stt_selftest_report.txt"
+          exit /b %RC%
+
+      - name: Speech-to-text test of the packaged exe (real model)
+        timeout-minutes: 15
+        shell: pwsh
+        run: |
+          $env:VOICEAPP_DATA_DIR = "$env:RUNNER_TEMP\sttdata"
+          $p = Start-Process -FilePath dist\VoiceApp\VoiceApp.exe -PassThru -ArgumentList @(
+            "--stt-selftest", "$env:RUNNER_TEMP\whisper-large-fa-v1", "$env:RUNNER_TEMP\fa\rec1.ogg",
+            "$env:RUNNER_TEMP\sttout", "$env:RUNNER_TEMP\fa\rec1.txt")
+          $done = $p.WaitForExit(600000)
+          Get-Content "$env:RUNNER_TEMP\sttdata\logs\voiceapp.log" -ErrorAction SilentlyContinue
+          if (-not $done) { $p.Kill(); Write-Error "The exe did not finish within 10 minutes"; exit 1 }
+          Get-Content "$env:RUNNER_TEMP\sttout\stt_selftest_report.txt"
+          exit $p.ExitCode
 
       - name: Report size
         shell: pwsh

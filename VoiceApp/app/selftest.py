@@ -69,7 +69,9 @@ def run_stt_selftest(model_dir: Path, audio: Path, output_dir: Path, reference: 
     report = output_dir / "stt_selftest_report.txt"
     lines = [f"Model: {model_dir}", f"Audio: {audio}"]
     failures = 0
+    log.info("STT self-test: loading %s", model_dir)
     t = Transcriber(model_dir, 4)
+    log.info("STT self-test: model loaded, transcribing %s", audio)
     lines.append(f"Model loaded in {t.load_seconds:.1f}s")
     result = t.transcribe(audio)
     speed = result.processing_seconds / max(result.audio_seconds, 0.1)
