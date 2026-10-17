@@ -28,7 +28,9 @@ class Settings:
     cpu_threads: int = 4          # i3-1215U: 4 is a good balance; more threads gain little on E-cores
     model_dirs: dict = field(default_factory=dict)   # model key -> folder chosen with "Select local model folder"
     personalization_enabled: bool = True
-    use_vocabulary_hints: bool = True   # give the vocabulary to the model as "hotwords" (rules are separate)
+    # Vocabulary as faster-whisper "hotwords". Off by default: in tests on Persian speech the hints made
+    # the fine-tuned model skip/garble sentences (WER 14.5% -> 48%), while correction rules only helped.
+    use_vocabulary_hints: bool = False
     export_srt: bool = False
     stt_last_dir: str = ""
     stt_output_dir: str = ""

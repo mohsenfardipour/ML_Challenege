@@ -193,10 +193,10 @@ class PersonalizeTab(QWidget):
         save.clicked.connect(self._save_vocab)
         self.vocab_info = QLabel()
         self.vocab_info.setWordWrap(True)
-        self.hints_check = QCheckBox("Give these words to the model as hints while transcribing")
+        self.hints_check = QCheckBox("Give these words to the model as hints while transcribing (experimental)")
         self.hints_check.setChecked(self.settings.use_vocabulary_hints)
-        self.hints_check.setToolTip("Hints can fix names and rare words, but occasionally make the model skip a "
-                                    "sentence. Use “4. Test” to see whether they help with your messages.")
+        self.hints_check.setToolTip("Off by default: in our tests hints made the Persian model skip or garble "
+                                    "sentences. Turn on only if “4. Test” shows they help with your messages.")
         self.hints_check.toggled.connect(lambda v: setattr(self.settings, "use_vocabulary_hints", v))
         row = QHBoxLayout()
         row.addWidget(suggest)
