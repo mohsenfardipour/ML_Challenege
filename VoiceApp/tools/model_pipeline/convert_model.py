@@ -6,8 +6,8 @@ Produces OUT_DIR/KEY/ (CTranslate2, int8 weights) containing model.bin,
 config.json, vocabulary.json, tokenizer.json, preprocessor_config.json and
 voiceapp_model.json, and OUT_DIR/KEY-ct2-int8.zip with KEY/ as the top folder.
 
-If the model uses a non-standard token layout (BuzzASR/persian), the tokens are
-renumbered first (remap_vocab.py). With TEST_AUDIO, the converted model's output
+If the tokenizer's special-token names disagree with generation_config
+(BuzzASR/persian), tokenizer.json is rebuilt first (fix_tokenizer.py). With TEST_AUDIO, the converted model's output
 is compared with the original model running in transformers on the same audio.
 Runs in CI (needs torch + transformers + ctranslate2 + faster-whisper); not part of the app.
 """
@@ -23,7 +23,7 @@ from huggingface_hub import HfApi, snapshot_download
 
 sys.path.insert(0, str(Path(__file__).resolve().parent))
 sys.path.insert(0, str(Path(__file__).resolve().parents[2]))
-from remap_vocab import needs_remap, remap  # noqa: E402
+from fix_tokenizer import fix, needs_fix, write_vocabulary  # noqa: E402
 
 SPECIAL = ("<|endoftext|>", "<|startoftranscript|>", "<|fa|>", "<|transcribe|>", "<|translate|>",
            "<|startofprev|>", "<|nospeech|>", "<|notimestamps|>", "<|0.00|>", "<|0.02|>")
@@ -68,20 +68,15 @@ def main(repo: str, key: str, out_dir: str, test_audio: str | None = None) -> in
         if ids[needed] is None:
             print(f"ERROR: tokenizer has no {needed}; faster-whisper cannot decode this model.")
             return 2
-    remap_info = None
+    fix_info = None
     convert_src = src
-    if needs_remap(src / "tokenizer.json"):
-        print("Non-standard token layout -> renumbering tokens to the standard Whisper layout")
-        convert_src = work / "remapped"
-        remap_info = remap(src, convert_src)
-        (convert_src / "tokenizer_config.json").write_text(json.dumps({
-            "tokenizer_class": "WhisperTokenizer", "processor_class": "WhisperProcessor",
-            "bos_token": "<|endoftext|>", "eos_token": "<|endoftext|>", "unk_token": "<|endoftext|>",
-            "pad_token": "<|endoftext|>", "add_prefix_space": False, "errors": "replace",
-            "model_max_length": 448}), encoding="utf-8")
+    if needs_fix(src):
+        print("Special-token names disagree with generation_config -> rebuilding tokenizer.json")
+        convert_src = work / "fixed"
+        fix_info = fix(src, convert_src)
         tokenizer = Tokenizer.from_file(str(convert_src / "tokenizer.json"))
         ids = {t: tokenizer.token_to_id(t) for t in SPECIAL}
-        print("new ids:", ids)
+        print("ids after fix:", ids)
         assert tokenizer.decode(tokenizer.encode(test, add_special_tokens=False).ids) == test
         gen_path = convert_src / "generation_config.json"
         gen = json.loads(gen_path.read_text(encoding="utf-8"))
@@ -107,6 +102,8 @@ def main(repo: str, key: str, out_dir: str, test_audio: str | None = None) -> in
     copy = [f for f in ("tokenizer.json", "preprocessor_config.json") if (convert_src / f).exists()]
     TransformersConverter(str(convert_src), copy_files=copy, load_as_float16=True,
                           low_cpu_mem_usage=True).convert(str(target), quantization="int8")
+    if fix_info is not None:
+        write_vocabulary(target, config["vocab_size"])
     meta = {
         "key": key,
         "source_repo": repo,
@@ -115,7 +112,7 @@ def main(repo: str, key: str, out_dir: str, test_audio: str | None = None) -> in
         "quantization": "int8",
         "ctranslate2_version": ctranslate2.__version__,
         "without_timestamps": not timestamps_ok,
-        "token_layout_remapped": remap_info is not None,
+        "tokenizer_rebuilt": fix_info is not None,
     }
     if test_audio:
         meta["check_vs_transformers"] = verify(src, target, Path(test_audio))
