@@ -1,0 +1,20 @@
+{
+  "symbols": ["فولاد", "خودرو", "شپنا"],
+  "start_date": "1402/01/01",
+  "end_date": "1402/12/29",
+  "categories": ["financial_statements", "monthly_reports", "announcements"],
+  "announcement_types": ["important_disclosure", "material_contract", "capital_increase",
+                         "board_decision", "general_assembly", "production_sales", "other"],
+  "period_months": [],
+  "fiscal_year_ends": [],
+  "audit_status": "all",
+  "statement_scope": "all",
+  "include_children": false,
+  "fetch_announcement_body": false,
+  "min_interval_sec": 1.5,
+  "max_retries": 5,
+  "use_browser": "auto",
+  "verify_sample": 3,
+  "work_dir": "codal_work",
+  "output": "output/codal_1402.xlsx"
+}
