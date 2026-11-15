@@ -38,7 +38,7 @@
     "productName": "Kimiagar",
     "files": ["dist/**/*", "electron/**/*"],
     "directories": { "output": "release" },
-    "win": { "target": "nsis" },
+    "win": { "target": "nsis", "signAndEditExecutable": false },
     "nsis": { "oneClick": false, "allowToChangeInstallationDirectory": true, "shortcutName": "کیمیاگر" }
   }
 }
