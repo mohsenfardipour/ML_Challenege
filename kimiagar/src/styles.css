@@ -234,3 +234,4 @@ button.small { min-height: 32px; padding: .2rem .6rem; font-size: .85rem; }
   .commitments .cm-head, .commitments .cm-row { grid-template-columns: 1fr 52px 62px; }
   .hbar { grid-template-columns: 7rem 1fr 1.6rem; }
 }
+.field-inline > input.int { flex: none; min-width: 0; }

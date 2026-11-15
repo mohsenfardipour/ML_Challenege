@@ -40,8 +40,8 @@ There's no separate blank form. The printed form is fully readable on every page
 | 17 | 35 | R2 No (−10) → 50 | 85 | 85 ✓ |
 | 19 | 35 | R8 No (−2), R12 No (0) → 53 | 88 | 88 ✓ |
 | 23 | 35 | R1 No n=1, R3 No → 30 | 65 | 65 ✓ |
-| 18 | 10+10+5+7=32 | R2 No, R3 No → 35 | 67 | **62** ✗ (open question Q1) |
-| 20 | 8?+10+8+2 | R1 No n=1 → 45 | 73? | **70** (Q2) |
+| 18 | 10+10+5+7=32 | R2 No, R3 No → 35 | 67 | **62** → owner: use **67** |
+| 20 | 8?+10+8+2 | R1 No n=1 → 45 | 73? | **70** → owner: ignore outside marks |
 
 Rule (fits every legible page): total = Σ card scores + Σ over rows of (Yes → yesPts, No → noPts, or noPts×n for row 1, unanswered → 0). Days 17, 19 and 23 become extra unit tests along with A and B.
 
@@ -88,10 +88,10 @@ dimRatings   {id, dimensionId, date, rating:1..10, note}
 `scoreDay(day, rules) → {actions, commitments, total, max, lost}` is a pure function.
 - Card score: clamped to 0..cardMax[i], blank = 0. The input rejects values that are out of range or not whole numbers.
 - `simple` and `streak`: Yes → yesPts, No → noPts. `multiplier`: No → noPts × max(1, n). Unanswered → 0.
-- `star` (row 13): plain Yes/No, starting at +5/0. It's **inactive by default** so max stays 100 (Q4).
-- Averages ignore days with no page. Weekly is Saturday–Friday (Q6).
+- `star` (replaces row 5): plain Yes/No, +5/0, linked to the Star screen.
+- Averages count only days with a score or answer. The week runs Saturday to Friday; the month is the Jalali month.
 - Streak pre-fill: if yesterday's row was Yes with streak k, suggest k+1; otherwise leave it empty.
-- Tests (Vitest): A=100, B=77, plus pages 17→85, 19→88 and 23→65.
+- Tests (Vitest): A=100, B=77, plus pages 17→85, 18→67, 19→88 and 23→65.
 
 ## 5. Other rules
 - **Experience cycle:** due date = last completed date (or course start) + interval. Banner shows «N روز مانده» or «N روز گذشته».
@@ -101,20 +101,25 @@ dimRatings   {id, dimensionId, date, rating:1..10, note}
 
 ## 6. Tech decision
 React 18 + TypeScript + Vite. Dexie (IndexedDB). `jalaali-js` (tiny, no dependencies) for Jalali dates. Vazirmatn font bundled from npm. Vitest for tests. Routing by hash without a library. Plain CSS with RTL logical properties. Charts are hand-written SVG. No network calls at runtime.
-M7: Electron + electron-builder (NSIS). Building a Windows `.exe` from Linux needs Wine, so I'll set up the config and give you one command to run on your Windows PC (Q7).
+M7: Electron + electron-builder (NSIS). Building a Windows `.exe` from Linux needs Wine, so the owner runs `npm run dist:win` on Windows.
 
-## 7. Open questions
-1. **Day 18** (7/7): I compute 67 (32 + 35), but the paper says **62** and «۲۸-». Is one of the rows 4–12 actually No or unanswered, or is it an arithmetic slip?
-2. **Day 20** (7/9): card 1 looks like «۸», with «۵» written outside cards 1 and 4. Total 70 only works if card 1 = 5. What do the outside marks mean?
-3. **Mood scale:** I read 1 = big smile, 2 = smile, 3 = neutral, 4 = sad, 5 = shocked/distressed. Do you want short labels under the faces, or faces only?
-4. **Row 13 (Star):** should it be active by default? If it is, the daily max becomes 105. Keep +5/0?
-5. **Star workflow:** there's no steps page. Which point does the sequence start from (top, clockwise)? What are the real questions for each step? Until you tell me, each step asks: «کجا در [red label] گیر کرده‌ام؟» and «بازنویسی به سمت [black label]».
-6. **Week start:** Saturday?
-7. **Windows build:** is it OK to run one command on your PC (`npm run dist:win`) to make the `.exe`?
-8. **"تجربه مشترک سوم/چهارم با خانواده"** (days 17 and 20, three days apart): is this the 14-day new experience or something separate?
-9. **Day number:** confirm «روز N» counts filled pages, not calendar days since the start, as the dates suggest.
-10. **Year:** your handwritten dates are only month/day (7/5 …). I'll assume the current Jalali year and you can override it. OK?
-11. **Dimension list:** confirm the Persian names: خانواده، دوستان، رابطه عاطفی، سلامت جسم، سلامت روان، شغل و حرفه، آموزش و یادگیری، سلامت مالی، معنویت، روابط اجتماعی، تفریح و اوقات فراغت، رشد فردی و خودآگاهی. Should «کودک» (card 3, your inner child) map to تفریح, or should it be its own dimension?
+## 7. Owner decisions (approved)
+1. Day 18 counts as **67** (calculated), not 62. The reference photo is unchanged.
+2. Day 20: ignore the marks outside the cards.
+3. Mood: faces only, with a short tooltip.
+4. **Star Rewriting replaces row 5** (affirmation, +5/0). The daily max stays **100**. The old row is kept inactive in Settings.
+5. Star starts at the step **«جایگاه فعلی»**, then the six points clockwise from the top. Each point shows its red and black labels plus editable text fields. Questions and instructions are left **empty** in `src/config/star.json` for the owner to fill in.
+6. The week runs Saturday to Friday.
+7. The owner builds the `.exe` on Windows with `npm run dist:win`.
+8. The «تجربه مشترک … با خانواده» entries are ordinary daily actions.
+9. «روز N» = last recorded page + 1, editable.
+10. Old handwritten pages are dated with year 1405 by default. The year can be edited.
+11. The 12 dimensions are confirmed. «کودک» is a **separate category** (kind `category`): you can link actions to it and it gets its own bar on the Balance screen, but it isn't a life dimension and gets no satisfaction rating.
+
+### Points of interpretation (tell me if wrong)
+- The diagram has no point called «جایگاه فعلی», so it's a first step before the six points (one text field, title editable in the JSON).
+- Monthly average = the Jalali month.
+- Averages count only days with at least one score or answer; days that are only planned don't count.
 
 ## 8. Out of scope (MVP)
 Per-dimension goal and trend pages, push notifications, pixel-perfect PDF/PNG, sync, multiple users, PWA install.
