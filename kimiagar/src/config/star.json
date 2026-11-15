@@ -1,0 +1,60 @@
+{
+  "_help": "All Star Rewriting texts. Edit labels, questions and instructions here; no code changes needed. Empty strings are simply not shown. Point order = clockwise from the top of the diagram.",
+  "title": "ستاره بازنویسی",
+  "intro": "",
+  "center": {
+    "red": "غیرسازنده و ناکارآمد و غیرمؤثر",
+    "black": "انعطاف‌پذیری روانشناختی"
+  },
+  "start": {
+    "id": "current",
+    "title": "جایگاه فعلی",
+    "question": "",
+    "instruction": "",
+    "fields": [{ "id": "text", "label": "" }]
+  },
+  "points": [
+    {
+      "id": "p1", "color": "#d1262f",
+      "red": "گذشته - آینده", "redDetail": "",
+      "black": "لحظه حال",
+      "question": "", "instruction": "",
+      "fields": [{ "id": "red", "label": "" }, { "id": "black", "label": "" }]
+    },
+    {
+      "id": "p2", "color": "#d1137a",
+      "red": "فقدان ارزش", "redDetail": "(در ترس، سود کاذب و ... گیر کردم)",
+      "black": "ارزش",
+      "question": "", "instruction": "",
+      "fields": [{ "id": "red", "label": "" }, { "id": "black", "label": "" }]
+    },
+    {
+      "id": "p3", "color": "#7b2ad1",
+      "red": "احساس گیرافتادن و بی‌عملی", "redDetail": "(در یک بی‌عملی یا یک عمل غیرمؤثر گیر افتادم)",
+      "black": "عمل متعهدانه",
+      "question": "", "instruction": "",
+      "fields": [{ "id": "red", "label": "" }, { "id": "black", "label": "" }]
+    },
+    {
+      "id": "p4", "color": "#1f3fd6",
+      "red": "خود مفهوم‌سازی شده", "redDetail": "",
+      "black": "خود به عنوان ناظر",
+      "question": "", "instruction": "",
+      "fields": [{ "id": "red", "label": "" }, { "id": "black", "label": "" }]
+    },
+    {
+      "id": "p5", "color": "#109a86",
+      "red": "چسبندگی شناختی فکر و حس", "redDetail": "",
+      "black": "جداسازی فکر و حس",
+      "question": "", "instruction": "",
+      "fields": [{ "id": "red", "label": "" }, { "id": "black", "label": "" }]
+    },
+    {
+      "id": "p6", "color": "#8fae1b",
+      "red": "اجتناب از تجربه", "redDetail": "پاسخ چالشی",
+      "black": "تمایل/پذیرش",
+      "question": "", "instruction": "",
+      "fields": [{ "id": "red", "label": "" }, { "id": "black", "label": "" }]
+    }
+  ]
+}
