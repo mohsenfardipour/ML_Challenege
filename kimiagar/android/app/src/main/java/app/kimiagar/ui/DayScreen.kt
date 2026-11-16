@@ -190,7 +190,7 @@ fun Commitments(day: Day, s: Settings, prev: Day?, compact: Boolean, onChange: (
             Spacer(Modifier.width(4.dp))
             Pill(Fmt.signed(def.yesPts), a.answer == "yes", Modifier.width(60.dp).testTag("yes-${def.id}"), onColor = K.good) { answer("yes") }
             Spacer(Modifier.width(4.dp))
-            val noLabel = if (def.kind == "multiplier") "${Fmt.num(def.noPts)}×${if (a.answer == "no") Fmt.num(a.n ?: 1) else "…"}" else Fmt.num(def.noPts)
+            val noLabel = if (def.kind == "multiplier") "\u200E${Fmt.num(def.noPts)}×${if (a.answer == "no") Fmt.num(a.n ?: 1) else "…"}" else Fmt.num(def.noPts)
             Pill(noLabel, a.answer == "no", Modifier.width(72.dp).testTag("no-${def.id}"), onColor = K.bad) { answer("no") }
         }
         if (def.kind == "multiplier" && a.answer == "no") {

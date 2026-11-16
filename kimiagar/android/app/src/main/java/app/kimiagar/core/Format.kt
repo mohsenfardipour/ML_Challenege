@@ -7,14 +7,18 @@ object Fmt {
     fun num(v: Any?): String {
         if (v == null) return ""
         val s = v.toString().removeSuffix(".0")
-        return if (persianDigits) s.map { if (it in '0'..'9') FA[it - '0'] else it }.joinToString("") else s
+        val out = if (persianDigits) s.map { if (it in '0'..'9') FA[it - '0'] else it }.joinToString("") else s
+        // LRM keeps a leading minus sign on the left of the digits inside right-to-left text (like the paper form).
+        return if (out.startsWith("-")) "$LRM$out" else out
     }
 
-    fun signed(v: Int) = if (v > 0) "+${num(v)}" else num(v)
+    private const val LRM = "\u200E"
+
+    fun signed(v: Int) = if (v > 0) "$LRM+${num(v)}" else num(v)
 
     /** Persian/Arabic/Latin digits -> Int, or null. */
     fun parseInt(s: String): Int? {
-        val latin = s.trim().map {
+        val latin = s.replace(LRM, "").trim().map {
             when (it) {
                 in '۰'..'۹' -> '0' + (it - '۰')
                 in '٠'..'٩' -> '0' + (it - '٠')

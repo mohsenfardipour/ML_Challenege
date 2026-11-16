@@ -15,3 +15,11 @@
 - The app requests persistent storage. In Electron the app is served from `app://kimiagar`, a stable origin, so the database survives app updates. It lives in `%APPDATA%/Kimiagar`.
 
 **Config without code:** the Star Rewriting texts are in `src/config/star.json`. Commitments, points, dimensions, card maxima and the experience interval are editable in Settings.
+
+## Android app (`android/`)
+- Native **Kotlin + Jetpack Compose**, minSdk 26, no INTERNET permission, `allowBackup=false` (nothing goes to Google cloud backup).
+- `core/`: a plain-Kotlin port of the same rules (`Scoring`, `Logic`, `Jalali`, `Export`, `Backup`). Models use the same field names as the desktop app, so **the JSON backup file is identical** on both platforms. The Jalali port is checked against 60 dates produced by `jalaali-js`, and a real desktop backup is restored in a test.
+- `data/Repo`: all data is one JSON document in private app storage, written with `AtomicFile` (crash-safe), 400 ms after the last change and always when the app goes to background. An unreadable file is never overwritten; a copy is kept.
+- `ui/`: Compose screens mirroring the paper form. Star texts are read from the shared `src/config/star.json`.
+- Tests: `./gradlew testDebugUnitTest` runs the 20 core tests plus 2 full UI flows (Robolectric).
+- Signing: `kimiagar.keystore` is one fixed key for every build, so new versions always install over old ones without losing data.

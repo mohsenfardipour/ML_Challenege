@@ -25,7 +25,8 @@ object Repo {
         private set
 
     fun init(ctx: Context) {
-        if (::file.isInitialized) return
+        if (::file.isInitialized && file.baseFile.parentFile == ctx.filesDir) return
+        loadError = null
         file = AtomicFile(File(ctx.filesDir, "kimiagar.json"))
         _data.value = try {
             if (file.baseFile.exists()) KJson.decodeFromString(AppData.serializer(), String(file.readFully(), Charsets.UTF_8)) else AppData()

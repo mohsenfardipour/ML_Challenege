@@ -1,7 +1,6 @@
 package app.kimiagar.ui
 
 import android.graphics.Bitmap
-import androidx.compose.ui.graphics.asAndroidBitmap
 import androidx.compose.ui.test.*
 import androidx.compose.ui.test.junit4.createAndroidComposeRule
 import app.kimiagar.MainActivity
@@ -19,15 +18,19 @@ import java.io.File
 /** End-to-end flows on the real activity (Robolectric). Screenshots go to app/build/shots/. */
 @RunWith(RobolectricTestRunner::class)
 @GraphicsMode(GraphicsMode.Mode.NATIVE)
-@Config(sdk = [34], qualifiers = "w390dp-h844dp-xhdpi")
+@Config(sdk = [34], qualifiers = "w390dp-h1400dp-xhdpi")
 class FlowTest {
     @get:Rule val rule = createAndroidComposeRule<MainActivity>()
 
     private fun shot(name: String) {
         rule.waitForIdle()
-        val bmp = rule.onRoot().captureToImage().asAndroidBitmap()
+        val v = rule.activity.window.decorView
+        val bmp = Bitmap.createBitmap(v.width, v.height, Bitmap.Config.ARGB_8888)
+        rule.runOnUiThread { v.draw(android.graphics.Canvas(bmp)) }
         File("build/shots").apply { mkdirs() }.resolve("$name.png").outputStream().use { bmp.compress(Bitmap.CompressFormat.PNG, 100, it) }
     }
+    @org.junit.Before fun start() { rule.runOnUiThread { Nav.tab(Screen.Today) }; rule.waitForIdle() }
+
     private fun nav(s: Screen) { rule.runOnUiThread { Nav.tab(s) }; rule.waitForIdle() }
     private fun tap(tag: String) = rule.onNodeWithTag(tag).performScrollTo().performClick()
 
@@ -64,7 +67,7 @@ class FlowTest {
 
         // Today dashboard shows the same total
         nav(Screen.Today)
-        rule.onNodeWithText("۷۷").performScrollTo().assertExists()
+        assertEquals(2, rule.onAllNodesWithText("۷۷").fetchSemanticsNodes().size) // score panel + today's bar in the chart
         shot("4-today-filled")
 
         nav(Screen.History); shot("5-history")
