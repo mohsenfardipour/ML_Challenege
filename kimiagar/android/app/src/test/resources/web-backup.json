@@ -1,0 +1,606 @@
+{
+ "app": "kimiagar",
+ "schema": 1,
+ "exportedAt": "2026-11-15T12:18:10.732Z",
+ "data": {
+  "settings": [
+   {
+    "id": "main",
+    "name": "محسن",
+    "courseStart": null,
+    "courseLength": 45,
+    "cardMax": [
+     10,
+     10,
+     8,
+     7
+    ],
+    "digits": "fa",
+    "walkBlank": "",
+    "expIntervalDays": 14,
+    "lastBackupAt": null
+   }
+  ],
+  "commitmentDefs": [
+   {
+    "id": "c01",
+    "order": 1,
+    "kind": "multiplier",
+    "yesPts": 10,
+    "noPts": -10,
+    "active": true,
+    "label": "متعهد بوده‌ام؟ (هر عدم تعهد ۱۰- امتیاز)"
+   },
+   {
+    "id": "c02",
+    "order": 2,
+    "kind": "simple",
+    "yesPts": 5,
+    "noPts": -10,
+    "active": true,
+    "label": "به موقع بیدار شده‌ام؟"
+   },
+   {
+    "id": "c03",
+    "order": 3,
+    "kind": "simple",
+    "yesPts": 5,
+    "noPts": -10,
+    "active": true,
+    "label": "۱۵ دقیقه پیاده‌روی در روز با موزیک مثبت و ........ داشته‌ام؟"
+   },
+   {
+    "id": "c04",
+    "order": 4,
+    "kind": "simple",
+    "yesPts": 5,
+    "noPts": 0,
+    "active": true,
+    "label": "یک عمل محبت‌آمیز یا دو مورد تحسین دیگران داشته‌ام؟"
+   },
+   {
+    "id": "c05",
+    "order": 13,
+    "kind": "simple",
+    "yesPts": 5,
+    "noPts": 0,
+    "active": false,
+    "label": "قصد یا عبارت سازنده تأکیدی‌ام را تکرار کرده‌ام؟"
+   },
+   {
+    "id": "c06",
+    "order": 6,
+    "kind": "simple",
+    "yesPts": 5,
+    "noPts": -5,
+    "active": true,
+    "label": "ملاقات صبح‌گاهی داشته‌ام WOOP + تلقین"
+   },
+   {
+    "id": "c07",
+    "order": 7,
+    "kind": "simple",
+    "yesPts": 5,
+    "noPts": 0,
+    "active": true,
+    "label": "حداقل برای ۱۰ مورد شکرگزاری روزانه کرده‌ام؟"
+   },
+   {
+    "id": "c08",
+    "order": 8,
+    "kind": "simple",
+    "yesPts": 5,
+    "noPts": -2,
+    "active": true,
+    "label": "حداقل ۳ صفحه کتابم را مطالعه کرده‌ام؟"
+   },
+   {
+    "id": "c09",
+    "order": 9,
+    "kind": "simple",
+    "yesPts": 5,
+    "noPts": 0,
+    "active": true,
+    "label": "حداقل ۲ دقیقه خودم را تحسین کرده‌ام؟"
+   },
+   {
+    "id": "c10",
+    "order": 10,
+    "kind": "streak",
+    "yesPts": 5,
+    "noPts": 0,
+    "active": true,
+    "label": "رفتار غیرسازنده‌ای را حذف کرده‌ام؟"
+   },
+   {
+    "id": "c11",
+    "order": 11,
+    "kind": "streak",
+    "yesPts": 5,
+    "noPts": 0,
+    "active": true,
+    "label": "رفتار سازنده‌ام را انجام داده‌ام؟"
+   },
+   {
+    "id": "c12",
+    "order": 12,
+    "kind": "simple",
+    "yesPts": 5,
+    "noPts": 0,
+    "active": true,
+    "label": "با ارسال این فرم کامل شده‌ام؟"
+   },
+   {
+    "id": "c13",
+    "order": 5,
+    "kind": "star",
+    "yesPts": 5,
+    "noPts": 0,
+    "active": true,
+    "label": "ستاره بازنویسی را تکمیل کرده‌ام؟"
+   }
+  ],
+  "days": [
+   {
+    "date": "2026-11-15",
+    "dayNumber": 1,
+    "intention": "",
+    "actions": [
+     {
+      "topic": "",
+      "dimensionId": null,
+      "description": "",
+      "reflection": "",
+      "need": "",
+      "value": "",
+      "ability": "",
+      "comfort": null,
+      "score": 10,
+      "status": "todo"
+     },
+     {
+      "topic": "",
+      "dimensionId": null,
+      "description": "",
+      "reflection": "",
+      "need": "",
+      "value": "",
+      "ability": "",
+      "comfort": null,
+      "score": 10,
+      "status": "todo"
+     },
+     {
+      "topic": "",
+      "dimensionId": null,
+      "description": "",
+      "reflection": "",
+      "need": "",
+      "value": "",
+      "ability": "",
+      "comfort": null,
+      "score": 8,
+      "status": "todo"
+     },
+     {
+      "topic": "",
+      "dimensionId": null,
+      "description": "",
+      "reflection": "",
+      "need": "",
+      "value": "",
+      "ability": "",
+      "comfort": null,
+      "score": 4,
+      "status": "todo"
+     }
+    ],
+    "commitments": {
+     "c01": {
+      "answer": "no",
+      "n": 1,
+      "note": "غیبت"
+     },
+     "c02": {
+      "answer": "yes"
+     },
+     "c03": {
+      "answer": "yes"
+     },
+     "c04": {
+      "answer": "yes"
+     },
+     "c13": {
+      "answer": "yes"
+     },
+     "c06": {
+      "answer": "yes"
+     },
+     "c07": {
+      "answer": "yes"
+     },
+     "c08": {
+      "answer": "yes"
+     },
+     "c09": {
+      "answer": "yes"
+     },
+     "c10": {
+      "answer": "yes",
+      "streak": null
+     },
+     "c11": {
+      "answer": "yes",
+      "streak": null
+     },
+     "c12": {
+      "answer": "yes"
+     }
+    },
+    "rules": {
+     "cardMax": [
+      10,
+      10,
+      8,
+      7
+     ],
+     "defs": [
+      {
+       "id": "c01",
+       "label": "متعهد بوده‌ام؟ (هر عدم تعهد ۱۰- امتیاز)",
+       "yesPts": 10,
+       "noPts": -10,
+       "kind": "multiplier"
+      },
+      {
+       "id": "c02",
+       "label": "به موقع بیدار شده‌ام؟",
+       "yesPts": 5,
+       "noPts": -10,
+       "kind": "simple"
+      },
+      {
+       "id": "c03",
+       "label": "۱۵ دقیقه پیاده‌روی در روز با موزیک مثبت و ........ داشته‌ام؟",
+       "yesPts": 5,
+       "noPts": -10,
+       "kind": "simple"
+      },
+      {
+       "id": "c04",
+       "label": "یک عمل محبت‌آمیز یا دو مورد تحسین دیگران داشته‌ام؟",
+       "yesPts": 5,
+       "noPts": 0,
+       "kind": "simple"
+      },
+      {
+       "id": "c13",
+       "label": "ستاره بازنویسی را تکمیل کرده‌ام؟",
+       "yesPts": 5,
+       "noPts": 0,
+       "kind": "star"
+      },
+      {
+       "id": "c06",
+       "label": "ملاقات صبح‌گاهی داشته‌ام WOOP + تلقین",
+       "yesPts": 5,
+       "noPts": -5,
+       "kind": "simple"
+      },
+      {
+       "id": "c07",
+       "label": "حداقل برای ۱۰ مورد شکرگزاری روزانه کرده‌ام؟",
+       "yesPts": 5,
+       "noPts": 0,
+       "kind": "simple"
+      },
+      {
+       "id": "c08",
+       "label": "حداقل ۳ صفحه کتابم را مطالعه کرده‌ام؟",
+       "yesPts": 5,
+       "noPts": -2,
+       "kind": "simple"
+      },
+      {
+       "id": "c09",
+       "label": "حداقل ۲ دقیقه خودم را تحسین کرده‌ام؟",
+       "yesPts": 5,
+       "noPts": 0,
+       "kind": "simple"
+      },
+      {
+       "id": "c10",
+       "label": "رفتار غیرسازنده‌ای را حذف کرده‌ام؟",
+       "yesPts": 5,
+       "noPts": 0,
+       "kind": "streak"
+      },
+      {
+       "id": "c11",
+       "label": "رفتار سازنده‌ام را انجام داده‌ام؟",
+       "yesPts": 5,
+       "noPts": 0,
+       "kind": "streak"
+      },
+      {
+       "id": "c12",
+       "label": "با ارسال این فرم کامل شده‌ام؟",
+       "yesPts": 5,
+       "noPts": 0,
+       "kind": "simple"
+      }
+     ]
+    },
+    "experienceText": "",
+    "mood": 2,
+    "updatedAt": 1794745090179
+   },
+   {
+    "date": "2026-11-16",
+    "dayNumber": 1,
+    "intention": "آرامش",
+    "actions": [
+     {
+      "topic": "خانواده",
+      "dimensionId": "d01",
+      "description": "",
+      "reflection": "",
+      "need": "",
+      "value": "",
+      "ability": "",
+      "comfort": 2,
+      "score": null,
+      "status": "todo"
+     },
+     {
+      "topic": "",
+      "dimensionId": null,
+      "description": "",
+      "reflection": "",
+      "need": "",
+      "value": "",
+      "ability": "",
+      "comfort": null,
+      "score": null,
+      "status": "todo"
+     },
+     {
+      "topic": "",
+      "dimensionId": null,
+      "description": "",
+      "reflection": "",
+      "need": "",
+      "value": "",
+      "ability": "",
+      "comfort": null,
+      "score": null,
+      "status": "todo"
+     },
+     {
+      "topic": "",
+      "dimensionId": null,
+      "description": "",
+      "reflection": "",
+      "need": "",
+      "value": "",
+      "ability": "",
+      "comfort": null,
+      "score": null,
+      "status": "todo"
+     }
+    ],
+    "commitments": {},
+    "rules": {
+     "cardMax": [
+      10,
+      10,
+      8,
+      7
+     ],
+     "defs": [
+      {
+       "id": "c01",
+       "label": "متعهد بوده‌ام؟ (هر عدم تعهد ۱۰- امتیاز)",
+       "yesPts": 10,
+       "noPts": -10,
+       "kind": "multiplier"
+      },
+      {
+       "id": "c02",
+       "label": "به موقع بیدار شده‌ام؟",
+       "yesPts": 5,
+       "noPts": -10,
+       "kind": "simple"
+      },
+      {
+       "id": "c03",
+       "label": "۱۵ دقیقه پیاده‌روی در روز با موزیک مثبت و ........ داشته‌ام؟",
+       "yesPts": 5,
+       "noPts": -10,
+       "kind": "simple"
+      },
+      {
+       "id": "c04",
+       "label": "یک عمل محبت‌آمیز یا دو مورد تحسین دیگران داشته‌ام؟",
+       "yesPts": 5,
+       "noPts": 0,
+       "kind": "simple"
+      },
+      {
+       "id": "c13",
+       "label": "ستاره بازنویسی را تکمیل کرده‌ام؟",
+       "yesPts": 5,
+       "noPts": 0,
+       "kind": "star"
+      },
+      {
+       "id": "c06",
+       "label": "ملاقات صبح‌گاهی داشته‌ام WOOP + تلقین",
+       "yesPts": 5,
+       "noPts": -5,
+       "kind": "simple"
+      },
+      {
+       "id": "c07",
+       "label": "حداقل برای ۱۰ مورد شکرگزاری روزانه کرده‌ام؟",
+       "yesPts": 5,
+       "noPts": 0,
+       "kind": "simple"
+      },
+      {
+       "id": "c08",
+       "label": "حداقل ۳ صفحه کتابم را مطالعه کرده‌ام؟",
+       "yesPts": 5,
+       "noPts": -2,
+       "kind": "simple"
+      },
+      {
+       "id": "c09",
+       "label": "حداقل ۲ دقیقه خودم را تحسین کرده‌ام؟",
+       "yesPts": 5,
+       "noPts": 0,
+       "kind": "simple"
+      },
+      {
+       "id": "c10",
+       "label": "رفتار غیرسازنده‌ای را حذف کرده‌ام؟",
+       "yesPts": 5,
+       "noPts": 0,
+       "kind": "streak"
+      },
+      {
+       "id": "c11",
+       "label": "رفتار سازنده‌ام را انجام داده‌ام؟",
+       "yesPts": 5,
+       "noPts": 0,
+       "kind": "streak"
+      },
+      {
+       "id": "c12",
+       "label": "با ارسال این فرم کامل شده‌ام؟",
+       "yesPts": 5,
+       "noPts": 0,
+       "kind": "simple"
+      }
+     ]
+    },
+    "experienceText": "",
+    "mood": null,
+    "updatedAt": 1794745083169
+   }
+  ],
+  "starExercises": [
+   {
+    "id": "e8496195-81f1-41aa-9361-1da5034eec93",
+    "date": "2026-11-15",
+    "answers": {
+     "current": {
+      "text": "موقعیت امروز"
+     },
+     "p2": {
+      "red": "در ترس گیر کردم"
+     }
+    },
+    "current": 7,
+    "status": "done",
+    "createdAt": 1794745087269,
+    "doneAt": 1794745089834
+   }
+  ],
+  "experiences": [],
+  "dimensions": [
+   {
+    "id": "d01",
+    "name": "خانواده",
+    "order": 1,
+    "active": true,
+    "kind": "dimension"
+   },
+   {
+    "id": "d02",
+    "name": "دوستان",
+    "order": 2,
+    "active": true,
+    "kind": "dimension"
+   },
+   {
+    "id": "d03",
+    "name": "رابطه عاطفی",
+    "order": 3,
+    "active": true,
+    "kind": "dimension"
+   },
+   {
+    "id": "d04",
+    "name": "سلامت جسم",
+    "order": 4,
+    "active": true,
+    "kind": "dimension"
+   },
+   {
+    "id": "d05",
+    "name": "سلامت روان",
+    "order": 5,
+    "active": true,
+    "kind": "dimension"
+   },
+   {
+    "id": "d06",
+    "name": "شغل و حرفه",
+    "order": 6,
+    "active": true,
+    "kind": "dimension"
+   },
+   {
+    "id": "d07",
+    "name": "آموزش و یادگیری",
+    "order": 7,
+    "active": true,
+    "kind": "dimension"
+   },
+   {
+    "id": "d08",
+    "name": "سلامت مالی",
+    "order": 8,
+    "active": true,
+    "kind": "dimension"
+   },
+   {
+    "id": "d09",
+    "name": "معنویت",
+    "order": 9,
+    "active": true,
+    "kind": "dimension"
+   },
+   {
+    "id": "d10",
+    "name": "روابط اجتماعی",
+    "order": 10,
+    "active": true,
+    "kind": "dimension"
+   },
+   {
+    "id": "d11",
+    "name": "تفریح و اوقات فراغت",
+    "order": 11,
+    "active": true,
+    "kind": "dimension"
+   },
+   {
+    "id": "d12",
+    "name": "رشد فردی و خودآگاهی",
+    "order": 12,
+    "active": true,
+    "kind": "dimension"
+   },
+   {
+    "id": "k01",
+    "name": "کودک",
+    "order": 13,
+    "active": true,
+    "kind": "category"
+   }
+  ],
+  "dimRatings": []
+ }
+}
