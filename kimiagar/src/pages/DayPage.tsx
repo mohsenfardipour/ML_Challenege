@@ -7,6 +7,7 @@ import { fmtJalali, fmtJalaliLong, num } from '../lib/format';
 import { dayAsText } from '../lib/export';
 import { buildRules } from '../lib/rules';
 import { db } from '../db';
+import { canShareText, shareText } from '../pwa';
 import type { Day } from '../types';
 
 /** Most frequent values first (case/space-trimmed), from most recent days. */
@@ -112,6 +113,7 @@ export function DayPage({ date, initialMode }: { date: ISODate; initialMode?: Mo
           ? <button onClick={() => setMode('review')}>رفتن به انجام و بررسی</button>
           : <button onClick={() => go(`day/${addDays(date, 1)}/plan`)}>برنامه‌ریزی فردا</button>}
         <button className="ghost" onClick={copyText}>{copied ? 'کپی شد ✓' : 'کپی متن روز'}</button>
+        {canShareText() && <button className="ghost" onClick={() => shareText(dayAsText(day, settings, dims))}>ارسال (تلگرام…)</button>}
         <button className="ghost small" onClick={applyCurrentRules} title="این روز با قوانین امتیازی زمان ساخت خودش ذخیره شده است">اعمال قوانین فعلی</button>
       </div>
     </div>

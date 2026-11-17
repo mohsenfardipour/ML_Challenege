@@ -6,6 +6,11 @@ import { addDays, isoToJalali, todayISO } from '../lib/dates';
 import { fmtJalali, fmtJalaliLong, num } from '../lib/format';
 import { backupDue, dayTotal, daysUntil, isScored, nextExperienceDue, weekAverage } from '../lib/logic';
 import { db } from '../db';
+import { useState } from 'react';
+import { isIOS, isStandalone } from '../pwa';
+
+const HINT_KEY = 'kimiagar-ios-hint-hidden';
+const hintHidden = () => { try { return localStorage.getItem(HINT_KEY) === '1'; } catch { return false; } };
 
 export function Today() {
   const today = todayISO();
@@ -16,6 +21,7 @@ export function Today() {
   const exps = useLiveQuery(() => db.experiences.toArray(), []) ?? [];
   const stars = useLiveQuery(() => db.starExercises.toArray(), []) ?? [];
   const { day, setAction, setCommit, saved } = useDay(today);
+  const [showHint, setShowHint] = useState(() => isIOS() && !isStandalone() && !hintHidden());
   if (!day || !days) return <p className="muted pad">در حال بارگذاری…</p>;
 
   const byDate = new Map(days.map((d) => [d.date, d]));
@@ -44,6 +50,13 @@ export function Today() {
         <span className={`saved ${saved ? '' : 'pending'}`}>{saved ? '✓' : '…'}</span>
       </div>
 
+      {showHint && (
+        <div className="banner warn">
+          <b>نصب روی آیفون:</b> در Safari دکمهٔ اشتراک‌گذاری (Share) را بزنید و
+          «Add to Home Screen» را انتخاب کنید. بعد همیشه برنامه را از آیکون صفحهٔ اصلی باز کنید؛ اطلاعات آن جدا از Safari نگه داشته می‌شود.
+          <button className="ghost small" onClick={() => { try { localStorage.setItem(HINT_KEY, '1'); } catch { /* ignore */ } setShowHint(false); }}>باشه</button>
+        </div>
+      )}
       {backupDue(settings.lastBackupAt, Date.now(), days.length > 0) && (
         <Banner tone="warn" onClick={() => go('settings')}>یک هفته از آخرین پشتیبان گذشته است. برای پشتیبان‌گیری اینجا بزنید.</Banner>
       )}

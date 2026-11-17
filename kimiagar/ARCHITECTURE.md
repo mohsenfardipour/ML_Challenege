@@ -23,3 +23,9 @@
 - `ui/`: Compose screens mirroring the paper form. Star texts are read from the shared `src/config/star.json`.
 - Tests: `./gradlew testDebugUnitTest` runs the 20 core tests plus 2 full UI flows (Robolectric).
 - Signing: `kimiagar.keystore` is one fixed key for every build, so new versions always install over old ones without losing data.
+
+## iPhone (PWA)
+- The same web app, installable from Safari (manifest, `apple-touch-icon`, standalone mode, safe areas, 16px inputs so iOS doesn't zoom while typing).
+- `sw.js` is generated at build time (`vite.config.ts`) with the full list of built files. Everything is cached on install, so after one online visit the app works fully offline. A new build changes the cache name, which updates the app and removes the old cache.
+- On iOS, files (backup/CSV) go through the share sheet (`navigator.share` with files: Save to Files / Telegram), because downloads are unreliable in home-screen apps. If iOS drops the tap permission while the file is being prepared, a second "ذخیره / ارسال فایل" button appears.
+- Needs any static `https` host serving `kimiagar/dist`.

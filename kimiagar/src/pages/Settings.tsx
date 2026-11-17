@@ -3,7 +3,8 @@ import { useLiveQuery } from 'dexie-react-hooks';
 import { db, uid } from '../db';
 import { patchSettings, useAllDays, useDims, useSettings } from '../hooks';
 import { Card, IntInput, JalaliDateInput, Segmented } from '../components/ui';
-import { downloadFile, exportAll, restoreAll, validateBackup, type BackupFile } from '../lib/backup';
+import { exportAll, restoreAll, validateBackup, type BackupFile } from '../lib/backup';
+import { saveFile, type SaveResult } from '../pwa';
 import { actionsCsv, commitmentsCsv, daysCsv } from '../lib/export';
 import { todayISO } from '../lib/dates';
 import { num } from '../lib/format';
@@ -93,13 +94,23 @@ function BackupSection() {
   const dims = useDims();
   const fileRef = useRef<HTMLInputElement>(null);
   const [msg, setMsg] = useState('');
+  const [retry, setRetry] = useState<null | { name: string; content: string; mime: string; isBackup: boolean }>(null);
   const stamp = todayISO();
 
+  const done = async (r: SaveResult, f: { name: string; content: string; mime: string; isBackup: boolean }) => {
+    if (r === 'needs-tap') { setRetry(f); setMsg(''); return; }
+    setRetry(null);
+    if (r === 'cancelled') return setMsg('ذخیره لغو شد.');
+    if (f.isBackup) await patchSettings({ lastBackupAt: Date.now() });
+    setMsg(f.isBackup ? 'فایل پشتیبان ساخته شد. آن را جای امنی نگه دارید (مثلاً Files یا Saved Messages تلگرام).' : 'فایل ساخته شد.');
+  };
+  const save = async (name: string, content: string, mime: string, isBackup = false) => {
+    const f = { name, content, mime, isBackup };
+    await done(await saveFile(name, content, mime), f);
+  };
   const backup = async () => {
     const b = await exportAll();
-    downloadFile(`kimiagar-backup-${stamp}.json`, JSON.stringify(b, null, 1), 'application/json');
-    await patchSettings({ lastBackupAt: Date.now() });
-    setMsg('فایل پشتیبان ساخته شد. آن را جای امنی نگه دارید.');
+    await save(`kimiagar-backup-${stamp}.json`, JSON.stringify(b, null, 1), 'application/json', true);
   };
 
   const restore = async (file: File) => {
@@ -130,13 +141,18 @@ function BackupSection() {
       <div className="actions-row">
         <button onClick={backup}>پشتیبان‌گیری (JSON)</button>
         <button className="ghost" onClick={() => fileRef.current?.click()}>بازگردانی از فایل…</button>
-        <input ref={fileRef} type="file" accept="application/json,.json" hidden onChange={(e) => e.target.files?.[0] && restore(e.target.files[0])} />
+        <input ref={fileRef} type="file" accept="application/json,.json,text/plain" hidden onChange={(e) => e.target.files?.[0] && restore(e.target.files[0])} />
       </div>
       <div className="actions-row">
-        <button className="ghost small" onClick={() => downloadFile(`kimiagar-days-${stamp}.csv`, daysCsv(days), 'text/csv')}>CSV روزها</button>
-        <button className="ghost small" onClick={() => downloadFile(`kimiagar-actions-${stamp}.csv`, actionsCsv(days, dims), 'text/csv')}>CSV اقدام‌ها</button>
-        <button className="ghost small" onClick={() => downloadFile(`kimiagar-commitments-${stamp}.csv`, commitmentsCsv(days), 'text/csv')}>CSV تعهدات</button>
+        <button className="ghost small" onClick={() => save(`kimiagar-days-${stamp}.csv`, daysCsv(days), 'text/csv')}>CSV روزها</button>
+        <button className="ghost small" onClick={() => save(`kimiagar-actions-${stamp}.csv`, actionsCsv(days, dims), 'text/csv')}>CSV اقدام‌ها</button>
+        <button className="ghost small" onClick={() => save(`kimiagar-commitments-${stamp}.csv`, commitmentsCsv(days), 'text/csv')}>CSV تعهدات</button>
       </div>
+      {retry && (
+        <p className="msg">
+          فایل آماده است. <button onClick={async () => done(await saveFile(retry.name, retry.content, retry.mime), retry)}>ذخیره / ارسال فایل</button>
+        </p>
+      )}
       {msg && <p className="msg">{msg}</p>}
     </Card>
   );
